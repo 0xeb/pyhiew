@@ -1,0 +1,520 @@
+Version 0.53                                                        HEM SDK
+ 2 Jul 18
+
+			HEM (Hiew External Module)
+			==========================
+Текущая  версия  0.xx  является  pre-release  и  по  всей  видимости  будет
+изменяться.  Возможно  будет  несовместима  с последующими версиями, хотя я
+и  заложил  некоторые  reserved-поля  и  постараюсь  свести несовместимость
+к   минимальным   переделкам.   Hem-to-Hiew   interface   будет   совместим
+по  структурам  внутри  номера  старшей  версии  SDK.  Но  может отличаться
+по количеству доступных функций и параметрам некоторых отдельных функций.
+(Весь  этот  абзац  можно  считать  банальной  отмазкой неполной проработки
+интерфейса)
+
+
+                               Что это такое
+			       ~~~~~~~~~~~~~
+HEM  (Hiew  External  Module)  - это DLL которая вызывается из Hiew и может
+использовать некоторые функции Hiew а также обмениваться некоторыми данными
+с Hiew.
+
+
+                             Как это подключать
+                             ~~~~~~~~~~~~~~~~~~
+Hem-модули  имеют расширение .HEM и должны находится в каталоге (и возможно
+подкаталогах) указанном в строке hiew.ini:
+
+HemPath="c:\hiew\hem\"
+
+Строка  пути должна заключаться в кавычки, последний символ '\' не является
+обязательным.    Можно    использовать  пару  символов  '$\'  для  указания
+домашнего каталога hiew:
+
+HemPath="$\hem"
+
+
+                              Как это работает
+                              ~~~~~~~~~~~~~~~~
+Hem-модули  не  загружаются  до  тех пор пока не нажата клавиша F11 в любом
+из  режимов: text, hex, code. Если вы решились-таки использовать Hem-модули
+и  нажали  F11 - Hiew сканирует вышеказанный каталог (и подкаталоги) и ищет
+файлы   с   расширением   .hem   Загружает  каждый  из  них  через  функцию
+LoadLibrary(),  находит  экспортируемую  точку  входа  Hem_Load, и вызывает
+инициализатор Hem-модуля через найденную точку входа.
+
+Инициализатор  Hem_Load()  получает  от  Hiew  указатель на функцию общения
+с  hiew:  HiewGate()  и  уникальный  хэндл,  который  идентифицирует данный
+Hem-модуль  и  нужен  для  вызова  гейта  Hiew.  Указатель на функцию гейта
+и  уникальный  хэндл  должны быть сохранены для последующего использования.
+Hem_Load()  также  заполняет  указатель  на  структуру,  описывающую данный
+Hem-модуль. В ней указываются названия модуля, флаги при которых Hem-модуль
+будет  вызываться, функции входа. Любой Hem-модуль может предоставлять свои
+функции  для  прямого  вызова  (минуя Hiew) другими Hem-модулями через свой
+гейт.
+
+Если  загрузка и инициализация прошли успешно Hem-модуль регистрируется как
+валидный.  Все  модули,  включая  и незагрузившиеся доступны через Hem-menu
+F11. Ошибки загрузки можно посмотреть в Hem-menu по F6.
+
+При последующих вызовах Hem-menu нового сканирования Hem-каталога не будет.
+
+
+				  Hem-menu
+				  ~~~~~~~~
+Появляется  во  всех основных режимах: Text, Hex, Code по кнопке F11. Через
+него производятся все манипуляции с Hem-модулем.
+
+Активный  Hem-модуль  -  это  корректно загрузившийся модуль чья комбинация
+флагов  hemInfo_tag.hemFlag  совпадает с текущей ситуацией. Активный модуль
+в Hem-menu помечается значком слева.
+
+Управление в Hem-menu:
+Enter - вызов активного Hem-модуля
+F6    - Info:   отображение информации о загруженном Hem-модуле, включая путь, 
+                флаги активатиции, ошибки загрузки, код результата выполнения
+F9    - Unload: выгрузка текушего Hem-модуля
+F10   - Load:   повторная загрузка текущего Hem-модуля
+                F9/F10 используются при отладке Hem-модуля, чтобы не 
+                перегружать сам Hiew.
+Alt-F4- ReRead: перечитать Hem-каталог и перегрузить все модули
+F5    - Hidden: показать все Hem-модули, включая нективные.
+                По умолчанию в меню видны только активные Hem-модули.
+
+
+
+                            Как это сделать: HEM SDK
+                            ~~~~~~~~~~~~~~~~~~~~~~~~
+/* Смотрите *.h *.c из SDK и читайте данный документ. */
+
+По сути дела это два файла:
+hem.h      - include файл с описанием структур и функций интерфейса Hiew-Hem
+hiewgate.c - функции high-level вызова гейта Hiew из Hem-модуля
+
+Все  функции  Hiew  вызываются через функцию вызова HiewGate() с указателем
+на  структуру,  соответствующую  требуемой  функции. Можно самому заполнять
+нужную  структуру  и  вызывать  полученную  при инициализации HiewGate() (и
+в  этом  случае  файл  hiewgate.c  не  нужен)  либо использовать high-level
+interface   семейства   функций  HiewGate_xxxx()  (и  в  этом  случае  файл
+hiewgate.c должен быть откомпилирован и слинкован с Hem-модулем)
+
+Для компиляции Hem я использовал MSVC версии 6 и  не уверен что для другого
+компилятора  не потребуется вносить изменения в hem.h либо hiewgate.c Дайте
+мне знать если какие-то изменения все-таки потребовались.
+
+Следующие установки обязательны для создания корректного модуля Hem:
+- 1-байтовое выравнивание всех структур
+- описание внешних функций интерфейса как _cdecl
+- экспортируемая функция Hem_Load по имени в готовой DLL
+
+
+				Для создания:
+                                ~~~~~~~~~~~~
+
+1. включите файл hem.h в ваш исходный модуль
+#include "hem.h"
+
+2. заполните поля структуры HEMINFO_TAG:
+
+HEMINFO_TAG
+  hemSample1={ sizeof( HEMINFO_TAG ),     //(всегда) размер этой структуры
+               sizeof( int ),             //(всегда) размер int на данной машине
+               0,                   	  //(всегда) reserved
+               HEM_SDK_VERSION_MAJOR,     //(всегда) версия sdk старшая
+               HEM_SDK_VERSION_MINOR,     //(всегда) --"--      младшая
+               HEM_SAMPLE1_VERSION_MAJOR, // версия Hem-модуля старшая
+               HEM_SAMPLE1_VERSION_MINOR, // версия Hem-модуля младшая
+               HEM_FLAG_MODEMASK|HEM_FLAG_FILEMASK,	// флаги при которых Hem будет активен и может быть вызван (См.ниже)
+               0,                   	  // reserved
+               Hem_EntryPoint,            // указатель на функцию вызова из Hiew 
+               Hem_Unload,                // указатель на функцию, вызываемую при выгрузке Hem
+               NULL,                      // указатель на Hem-to-Hem гейт
+               0,                   	  // reserved
+               0,                   	  // reserved
+               0,                   	  // reserved
+               0,                   	  // reserved
+               "Sample ONE",              		      // короткое имя
+               "Hiew External Module: sample 1",	      // полное имя
+               "*******************************************", //
+               "This HEM is calling for any files and disks", // информация о Hem-модуле
+               "*******************************************"  //
+              };
+
+
+флаги активности разделяются на группы: 
+
+a) режим просмотра:
+ HEM_FLAG_CODE        - активен для режима Code
+ HEM_FLAG_HEX         - активен для режима Hex
+ HEM_FLAG_TEXT        - активен для режима Text
+ HEM_FLAG_MODEMASK    - активен для всех режимов
+
+b) тип файла:
+ HEM_FLAG_MACHO       - активен для Mach-O файлов
+ HEM_FLAG_MACHO64     - для Mach-O 64bits
+ HEM_FLAG_ELF         - для ELF-файлов
+ HEM_FLAG_ELF64       - для ELF 64bits
+ HEM_FLAG_NLM         - для NLM
+ HEM_FLAG_PE          - для PE
+ HEM_FLAG_PE64        - для PE 64bits (PE32+)
+ HEM_FLAG_LX          - для LX
+ HEM_FLAG_LE          - для LE
+ HEM_FLAG_NE          - для NE
+ HEM_FLAG_FILE        - активен для файлов отличных от вышеуказанных
+ HEM_FLAG_DISK        - активен для дисков
+ HEM_FLAG_FILEMASK    - активен для всех типов файлов и дисков
+
+c) дополнительно
+ HEM_FLAG_MARKEDBLOCK - активен только если помечен блок
+
+
+Для  определения  активности  строится флаг текущих режимов и проделывается
+операция AND с hemFlag над битами в каждой группе.
+
+примеры: 
+
+ HEM_FLAG_MODEMASK | HEM_FLAG_FILEMASK 
+ - будет активно во всех режимах, для всех файлов и не зависит 
+   от помеченого блока
+
+ HEM_FLAG_MARKEDBLOCK | HEM_FLAG_PE | HEM_FLAG_HEX
+ - будет активно только для PE-файлов в Hex-режиме при наличии 
+   помеченного блока
+
+ HEM_FLAG_TEXT | HEM_FLAG_FILE
+ - активен для режима просмотра текста любых файлов, отличных 
+   от newexecutable
+
+ 0
+ - никогда не будет активен, может быть использован в модуле, 
+   который предоставляет только функцию Hem-to-Hem
+
+
+3. Создайте экспортируемую функцию Hem_Load(). Эта функция будет вызваться 
+   Hiew при загрузке данного Hem-модуля.  
+
+int HEM_EXPORT
+ Hem_Load( HIEWINFO_TAG *hiewInfo )
+{
+ HiewGate_Set( hiewInfo );		// запомнить функцию гейта и свой хендл
+ hiewInfo->hemInfo=&hemSample1;		// отдать указатель на свою структуру
+ return( HEM_OK );			// нет ошибок инициализации
+}
+
+В   этой   функции   также   можно  проверить  версии  Hiew  и  HemSdk  для
+совместимости. Любые функции HiewGate() будут еще недоступны.
+
+
+4. Если требуются какие-либо действия при выгрузке Hem-модуля 
+   создайте Hem_Unload():
+
+int HEM_API
+ Hem_Unload()
+{
+ ...
+ return( HEM_OK );
+}
+  
+
+5. Создайте функцию вызова Hem-модуля:
+
+int HEM_API
+ Hem_EntryPoint( HEMCALL_TAG *hemCall )
+{
+...
+
+биты флага hemCall->hemCall будет выставлены соответственно текущим режимам
+во всех группах (см п2. флаги активности)
+
+В этой функции и производится основная работа Hem-модуля.
+
+Возвращаемое  значение  любое  целое,  отрицательное значение сигнализирует
+об ошибке выполнения.
+
+
+6. Для управления действиями Hiew после вызова используйте флаг
+   hemCall->returnActionFlag:
+
+a)
+ если требуется изменить текущее положение курсора установите бит 
+ HEM_RETURN_SETOFFSET и заполните hemCall->returnOffset
+
+b)
+ если требуется перегрузить файл, установите бит HEM_RETURN_FILERELOAD 
+
+c)
+ если требуется сменить режим показа установите бит HEM_RETURN_SETMODE и
+ заполните hemCall->returnMode соответственно:
+ HEM_RETURN_MODE_TEXT для текстового режима,
+ HEM_RETURN_MODE_HEX  для Hex,
+ HEM_RETURN_MODE_CODE для Code
+
+Любое  из  этих  действий  будет отработано только при неотрицательном коде
+возврата из Hem_EntryPoint()
+
+
+7. Вызовы гейта Hiew через high-level interface:
+
+откомилируйте и прилинкуйте hiewgate.c
+
+Почти  все  функции  возвращают  HEM_OK  в  случае  успеха  и отрицательное
+значение  HEM_ERR_... при неудаче.
+
+Желательно  проверять  результат  функции  на  неудачу, а то можно запросто
+вызвать    функции,    которой   не   было   в   предыдущих   версиях   SDK
+(HEM_ERR_HIEWGATE_ID_INVALID) либо функцию, параметры которой были изменены
+(HEM_ERR_HIEWGATE_PARM_INVALID).  Или  банально  забыть  указать  хендл при
+вызове   HiewGate()  (HEM_ERR_HANDLE_INVALID).  Вообщем  много  чего  можно
+сделать не так - проверяйте результат.
+
+Hiew  предоставляет  функции  для  выделения  и освобождения памяти, чтения
+и  записи  текущего  файла, поэтому не стоит для этого пользоваться прямыми
+функциями  winapi,  а  то  зачем я писал эти интерфейсные функции и включал
+их в SDK...
+
+
+
+               			HEM keys line
+                                ~~~~~~~~~~~~~
+С   версии  0.20  в  структуры  HIEWGATE_MENU,  HIEWGATE_WINDOW (и в соотв.
+функции  HiewGate_Window()    и    HiewGate_Menu())    добавлен    параметр
+HEM_FNKEYS  -    указатель    на    4   строки   состояния  Fn-клавиш  (Fn,
+AltFn, CtrlFn, ShiftFn).    Соответствующая    строка    состояния   должна
+быть  длиной 86 символов (включая последний-0) и вида:
+"123456789ABC|F1____F2____F3____F4____F5____F6____F7____F8____F9____F10___F11___F12___",
+где  первые  12  символов определяют активность клавиши (в соотв. позииции:
+1  -  активна, 0 - не активна) затем символ-разделитель '|' и 12 заголовков
+клавиш  по  6  символов  на  клавишу. Hiew возвратит HEM_ERR_FNKEYS_INVALID
+в случае если строка состояния не удовлетворяет этим условиям.
+
+строка:
+"010000000000|      Active      Pasive                                                ",
+определяет активную F2, а F4 хотя и будет показана но будет неактивной и не
+может быть нажата. 
+
+Если Fn-клавиша была нажата то ее код возвращается в параметре returnFnKey.
+
+Если какой-либо серии из Fn, Alt-, Ctrl-, Shift- не надо, строка состояний
+должна  быть  нулевой  длины  ("").    
+
+В следующем примере нет Alt-Fn и Ctrl-Fn:
+ HEM_FNKEYS 
+//          "123456789ABC|F1____F2____F3____F4____F5____F6____F7____F8____F9____F10___F11___F12___"
+  fnKeys={  "010000000000|      Active      Pasive                                                ",   // main Fn
+            "",   // no Alt-Fn
+            "",   // no Ctrl-Fn
+            "000000000100|                                                      Exit              " }; // Shift-Fn
+
+Если  вообще  не  надо  никаких  Fn,  то  в функциях HiewGate_Window()    и
+HiewGate_Menu() параметр fnKeys может стоять в NULL.
+
+
+
+
+                        Описания high-level функций
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+int HiewGate_Set( HIEWINFO_TAG *hiewInfo )
+    - запомнить адрес HiewGate() и свой хендл
+
+int HiewGate_Null( void ) 
+    - ничего не делает
+
+int HiewGate_GetData( HIEWGATE_GETDATA *hiewData ) 
+    - получить данные от Hiew
+    - возвращает HEM_ERR_HIEWDATA_SIZE_MISMATCH если запрашиваемый размер
+      отличен от полученного. Например в последующих версиях добавлены
+      какие-то поля, либо Hem-модуль работает с предыдущей версией SDK,
+      где чего-то еще нет.
+
+int HiewGate_GetHem2HemGate( HIEWGATE_GETHEM2HEMGATE *tag, HEM_BYTE *shortName )
+    - получить адрес Hem-to-Hem от другого Hem-модуля по его короткому имени
+
+HEM_BYTE *HiewGate_GetMemory( HEM_UINT bytes )
+    - получить блок памяти от Hiew
+    - в случа неуспеха возвращается NULL
+
+int HiewGate_FreeMemory( HEM_BYTE *pMem )
+    - освободить ранее полученный блок памяти
+
+int HiewGate_FileOpenForWrite( void )
+    - переоткрыть файл для записи
+
+int HiewGate_FileRead( HEM_QWORD offset, HEM_UINT bytes, HEM_BYTE *buffer )
+    - читать файл
+
+int HiewGate_FileWrite( HEM_QWORD offset, HEM_UINT bytes, HEM_BYTE *buffer )
+    - писать в файл, до этого должна быть вызвана функция HiewGate_FileOpenForWrite()
+
+int HiewGate_Message( HEM_BYTE *title, HEM_BYTE *msg )
+    - окошко 1-строчного сообщения
+
+int HiewGate_Window( HEM_BYTE *title, HEM_BYTE **lines, int linesCount, int width, HEM_FNKEYS *fnKeys, HEM_UINT *returnFnKey )
+    - окно сообщений
+    - возвращает HEM_INPUT_ESC если нажат ESC 
+      либо HEM_OK если нажат ENTER
+      если была нажата Fn-клавиша, ее код возвращается в HEM_UINT *returnFnKey
+
+int HiewGate_Menu( HEM_BYTE *title, 
+                   HEM_BYTE **lines, 
+                   int linesCount, 
+                   int width, 
+                   int startItem, 
+                   HEM_FNKEYS *fnKeys, 
+                   HEM_UINT *returnFnKey )
+                   HEM_BYTE * (*CallbackLine)( int, void * ),   // callback рисования строк вызывается если lines == NULL
+                   void *pData );
+    - меню
+    - возвращает HEM_INPUT_ESC если нажат ESC 
+      либо номер строки меню, для первой строки - 1, для второй - 2, ... для последней - linesCount
+      если была нажата Fn-клавиша, ее код возвращается в HEM_UINT *returnFnKey
+      
+int HiewGate_GetString( HEM_BYTE *title, HEM_BYTE *string, int stringLen )
+    - получить строку ввода от пользователя
+    - возвращает HEM_INPUT_ESC если нажат ESC либо HEM_INPUT_CR если был нажат Enter
+
+int HiewGate_MessageWaitOpen( HEM_BYTE *msg )
+    - открывает окно 1-строчного сообщения
+    - если параметр 'msg' есть NULL, сообщение будет "Processing..."
+    
+int HiewGate_MessageWaitClose( void )
+    - закрывает окно 1-строчного сообщения
+
+int HiewGate_IsKeyBreak( void )
+    - возвращает HEM_KEYBREAK если была нажата клавиша ESC
+    
+int HiewGate_SetErrorMsg( HEM_BYTE *errorMsg )
+    - устанавливает сообщение об ошибке
+    
+int HiewGate_GetStringDual( HEM_BYTE *title, HEM_BYTE *string, int stringLenMax /* <= 20 */, int stringLen, int *bOnHexLine )
+    - получить строку ascii/hex от пользователя
+    - возвращает HEM_INPUT_ESC если нажат ESC либо количество полученных байтов
+    
+HEM_BYTE *HiewGate_ReallocMemory( HEM_BYTE *pMem, HEM_UINT bytes )
+    - изменить размер ранее выделенной памяти 
+    - возвращает новый указатель, либо NULL в случае неуспеха
+
+int HiewGate_GetFilename( HEM_BYTE *title, HEM_BYTE *filename )
+    - получить строку ввода c именем файла, размер буфера должен быть равен (или более) HEM_FILENAME_MAXLEN
+    - возвращает HEM_INPUT_ESC если нажат ESC либо HEM_INPUT_CR если был нажат Enter
+
+int HiewGate_MarkBlock( HEM_QWORD offset1, HEM_QWORD offset2 )
+    - установить границы блока
+
+int HiewGate_UnmarkBlock( void )
+    - убрать границы блока
+
+int HiewGate_Names_Clear( void )
+    - очистить текущие имена
+
+int HiewGate_Names_AddLocal( HEM_QWORD offset, HEM_BYTE *name )
+    - добавить локальное имя
+    - возвращает HEM_ERROR если такое имя или смещение уже существуют
+    - возвращает HEM_ERR_INTERNAL если возникли какие-то ошибки внутри hiew
+
+int HiewGate_Names_AddGlobal( HEM_QWORD offset, HEM_BYTE *name )
+    - добавить глобальное имя
+    - возвращает HEM_ERROR если такое имя или смещение уже существуют
+    - возвращает HEM_ERR_INTERNAL если возникли какие-то ошибки внутри hiew
+
+int HiewGate_Names_DelLocal( HEM_QWORD offset )
+    - удалить имя на локальном смещении
+
+int HiewGate_Names_DelGlobal( HEM_QWORD offset )
+    - удалить имя на глобальном смещении
+
+int HiewGate_Names_DelName( HEM_BYTE *name )
+    - удалить имя
+
+int HiewGate_Names_CountLocal()
+    - получить количество локальных имен
+
+int HiewGate_Names_CountGlobal()
+    - получить количество глобальных имен
+
+int HiewGate_Names_CountName()
+    - получить количество всех имен
+
+HEM_BYTE  *HiewGate_Names_GetLocal( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength )
+    - получить имя по локальному смещению
+    - возвращает NULL если ничего не найдено
+
+HEM_BYTE  *HiewGate_Names_GetGlobal( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength )
+    - получить имя по глобальному смещению
+    - возвращает NULL если ничего не найдено
+
+HEM_QWORD  HiewGate_Names_FindName( HEM_BYTE *name )
+    - получить смещение по имени
+    - возвращает HEM_OFFSET_NOT_FOUND если не найдено
+
+int  HiewGate_Names_AddLocalComment( HEM_QWORD offset, HEM_BYTE *comment )
+    - комментарий к локальному смещению
+
+int  HiewGate_Names_AddGlobalComment( HEM_QWORD offset, HEM_BYTE *comment )
+    - комментарий к глобальному смещению
+
+int  HiewGate_Names_DelLocalComment( HEM_QWORD offset )
+    - удалить комментарий к локальному смещению
+
+int  HiewGate_Names_DelGlobalComment( HEM_QWORD offset )
+    - удалить комментарий к глобальному смещению
+
+HEM_BYTE  *HiewGate_Names_GetLocalComment( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength )
+    - получить комментарий к локальному смещению
+
+HEM_BYTE  *HiewGate_Names_GetGlobalComment( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength )
+    - получить комментарий к глобальному смещению
+
+HEM_QWORD  HiewGate_Global2Local( HEM_QWORD offsetGlobal )
+    - получить локальное смещение по глобальному
+    - возвращает HEM_OFFSET_NOT_FOUND если преобразование невозможно
+
+HEM_QWORD  HiewGate_Local2Global( HEM_QWORD offsetLocal )
+    - получить глобальное смещение по локальному
+    - возвращает HEM_OFFSET_NOT_FOUND если преобразование невозможно
+
+HEM_QWORD  HiewGate_Find( int flags, HEM_QWORD offset, HEM_BYTE *pData, int dataLength /* <= 512 */, HEM_BYTE *pMask )
+    - возвращает HEM_OFFSET_NOT_FOUND если не найдено
+
+HEM_QWORD  HiewGate_FindNext( void )
+    - возвращает HEM_OFFSET_NOT_FOUND если не найдено
+
+int  HiewGate_ColorMarker( HEM_QWORD offset, HEM_DWORD length /* <= 0xFFFFFF */, HEM_BYTE color )
+    - length байтов со смещения offset раскрасить в цвет color
+    - length в 0 для удаления цветного маркера для offset
+
+
+Примеры использования см. в Sample1.c, Sample2.c, Sample3.c данного SDK
+
+
+
+                                    История версий
+                                    ~~~~~~~~~~~~~~
+ 0.11 - 31/05/2005 - первая версия
+ 0.21 - 16/06/2005 - HEM keys line
+                   - изменены:  HIEWGATE_MENU, 
+                                HIEWGATE_WINDOW
+ 0.30 - 29/08/2005 - добавлены: HIEWGATE_MESSAGEWAITOPEN,
+                                HIEWGATE_MESSAGEWAITCLOSE, 
+                                HIEWGATE_ISKEYBREAK
+ 0.31 - 20/11/2006 - добавлен   флаг HEM_FLAG_PE64
+ 0.32 - 27/02/2007 - добавлены  winColMax и winRowMax в HEMCALL_TAG 
+ 0.35 - 12/05/2007 - добавлены: HIEWGATE_SETERRORMSG, 
+                                HIEWGATE_GETSTRINGDUAL
+ 0.40 - 28/08/2007 - добавлены: HIEWGATE_GETFILENAME, 
+                                HIEWGATE_REALLOCMEMORY, 
+                                HIEWGATE_MARKBLOCK
+                   - добавлен   filenameHash в HEMCALL_TAG 
+                   - изменена   HIEWGATE_MENU
+ 0.42 - 26/09/2007 - добавлены: HIEWGATE_NAMES
+ 0.44 - 29/03/2008 - добавлен   флаг HEM_FLAG_ELF64
+ 0.46 - 30/12/2008 - добавлены: HIEWGATE_GLOBAL2LOCAL
+                                HIEWGATE_LOCAL2GLOBAL
+                                HIEWGATE_FIND
+ 0.48 -  4/11/2012 - добавлена  HIEWGATE_COLORMARKER
+ 0.50 - 29/02/2016 - добавлены  флаги HEM_FLAG_MACHO и HEM_FLAG_MACHO64
+ 0.52 - 16/08/2017 - добавлен   флаг HEM_FLAG_TE
+ 0.53 -  2/06/2018 - добавлен   флаг HEM_FLAG_TE64
+
+
+=======
