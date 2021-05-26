@@ -851,6 +851,21 @@ def ReturnMode(mode):
     return _hiew.ReturnMode(mode)
 
 # -----------------------------------------------------------------------
+def ReturnReload():
+    """
+    Reloads the file upon script termination
+    """
+    return _hiew.ReturnReload()
+
+# -----------------------------------------------------------------------
+def ResetReturnAction():
+    """
+    Clears the returnActionFlag value.
+    This will clear all the ReturnXXX() arguments that were set.
+    """
+    return _hiew.ResetReturnAction()
+
+# -----------------------------------------------------------------------
 def ReturnCode(rc):
     """
     Changes the return code upon script termination
@@ -858,13 +873,6 @@ def ReturnCode(rc):
     @param rc: one of HEM_ERR_XXX
     """
     return _hiew.ReturnCode(rc)
-
-# -----------------------------------------------------------------------
-def ReturnReload():
-    """
-    Reloads the file upon script termination
-    """
-    return _hiew.ReturnReload()
 
 
 # -----------------------------------------------------------------------

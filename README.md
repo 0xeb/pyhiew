@@ -1,6 +1,6 @@
 # Installation
 
-1. Copy `pyhiew.hem` to `%HIEW%`
+1. Copy `pyhiew.hem` to `%HIEW%` (or to `%HIEW%\hem`)
 2. Copy `pyhiew` folder to `%HIEW%\pyhiew`
 
 ## pyhiew folder

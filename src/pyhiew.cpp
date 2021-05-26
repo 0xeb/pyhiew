@@ -570,7 +570,7 @@ static PyObject* py_ReturnOffset(PyObject*, PyObject* args)
     // ReturnOffset(offset) -> None
     if (PyArg_ParseTuple(args, "K", &offset))
     {
-        g_pHemCall->returnActionFlag = HEM_RETURN_SETOFFSET;
+        g_pHemCall->returnActionFlag |= HEM_RETURN_SETOFFSET;
         g_pHemCall->returnOffset = offset;
     }
     Py_RETURN_NONE;
@@ -583,9 +583,24 @@ static PyObject* py_ReturnMode(PyObject*, PyObject* args)
     // ReturnMode(mode) -> None
     if (PyArg_ParseTuple(args, "i", &mode))
     {
-        g_pHemCall->returnActionFlag = HEM_RETURN_SETMODE;
+        g_pHemCall->returnActionFlag |= HEM_RETURN_SETMODE;
         g_pHemCall->returnMode = mode;
     }
+    Py_RETURN_NONE;
+}
+
+//--------------------------------------------------------------------------
+static PyObject* py_ReturnReload(PyObject*, PyObject* args)
+{
+    // ReturnReload() -> None
+    g_pHemCall->returnActionFlag |= HEM_RETURN_FILERELOAD;
+    Py_RETURN_NONE;
+}
+
+//--------------------------------------------------------------------------
+static PyObject* py_ResetReturnAction(PyObject*, PyObject* args)
+{
+    g_pHemCall->returnActionFlag = 0;
     Py_RETURN_NONE;
 }
 
@@ -597,14 +612,6 @@ static PyObject* py_ReturnCode(PyObject*, PyObject* args)
     if (PyArg_ParseTuple(args, "i", &rc))
         g_HemEntryPointReturn = rc;
 
-    Py_RETURN_NONE;
-}
-
-//--------------------------------------------------------------------------
-static PyObject* py_ReturnReload(PyObject*, PyObject* args)
-{
-    // ReturnReload() -> None
-    g_pHemCall->returnActionFlag = HEM_RETURN_FILERELOAD;
     Py_RETURN_NONE;
 }
 
@@ -1071,8 +1078,9 @@ static PyMethodDef pyhiew_methods[] =
     // Return
     DEF_PY_METHOD(ReturnOffset),
     DEF_PY_METHOD(ReturnMode),
-    DEF_PY_METHOD(ReturnCode),
     DEF_PY_METHOD(ReturnReload),
+    DEF_PY_METHOD(ResetReturnAction),
+    DEF_PY_METHOD(ReturnCode),
 
     {nullptr, nullptr, 0, nullptr}
 };
