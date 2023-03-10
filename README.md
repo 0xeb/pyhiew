@@ -4,6 +4,8 @@
 
 # Installation
 
+First, make sure you have [Python 3.x 32-bits](https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe) installed, then:
+
 1. Copy `pyhiew.hem` to `%HIEW%` (or to `%HIEW%\hem`)
 2. Copy `pyhiew` folder to `%HIEW%\pyhiew`
 
@@ -26,22 +28,22 @@ pyhiew comes with a few built-in scripts in the [pyhiew](bin/pyhiew) folder.
 
 ### System scripts:
 
-- `init.py`: This is a special file that gets executed once when pyhiew initializes. One of its uses is to set the startup script.
-- `hiew.py`: The pyhiew python library. Please check the documents folder.
-- `scriptbrowser.py`: The standard script browsers (set as startup script). It lets you select and run other Python scripts in the folder.
+* `init.py`: This is a special file that gets executed once when pyhiew initializes. One of its uses is to set the startup script.
+* `hiew.py`: The pyhiew python library. Please check the documents folder.
+* `scriptbrowser.py`: The standard script browsers (set as startup script). It lets you select and run other Python scripts in the folder.
 
 ### Sample scripts:
 
-- `ClipText.py`: Allows you to copy selected bytes from Hiew into the clipboard (as C/Python/Pascal source code). This requires the pywin32 package (`pip install pywin32`).
-- `IDA-Names-Server.py` and `3rdparty/IDA-Names-Client.py`: Client server plugins to transfer symbols from IDA to Hiew
-- `test_pyshell.py`: A Python shell with Hiew as the Python host.
-- `_test_startup.py`: A test startup script. Configure in `init.py`.
-- `Decompress.py`: Uses `zlib.decompress` to decompress the selected bytes.
-- All other scripts: various examples.
+* `ClipText.py`: Allows you to copy selected bytes from Hiew into the clipboard (as C/Python/Pascal source code). This requires the pywin32 package (`pip install pywin32`).
+* `IDA-Names-Server.py` and `3rdparty/IDA-Names-Client.py`: Client server plugins to transfer symbols from IDA to Hiew
+* `test_pyshell.py`: A Python shell with Hiew as the Python host.
+* `_test_startup.py`: A test startup script. Configure in `init.py`.
+* `Decompress.py`: Uses `zlib.decompress` to decompress the selected bytes.
+* All other scripts: various examples.
 
 # Building instructions
 
-This project requires Python 3 [(32bits)](https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe), CMake and Visual Studio compiler.
+This project requires Python 3 [(32-bits)](https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe) development libraries and headers, CMake and Visual Studio compiler preferably.
 
 ```bash
 git clone https://github.com/0xeb/pyhiew.git
