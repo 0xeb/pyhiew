@@ -3,10 +3,7 @@ Transfer names from IDA to PyHiew - Server
 
 This script is part of the PyHiew project.
 
-http://code.google.com/p/pyhiew/
-
-
-(c) Elias Bachaalany
+(c) Elias Bachaalany @ 0xeb
 
 
 History

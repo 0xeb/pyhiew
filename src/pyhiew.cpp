@@ -7,7 +7,7 @@
 #include <conio.h>
 #include <Windows.h>
 #include <stdarg.h>
-#include "..\hiewsdk\hem.h"
+#include "../hiewsdk/hem.h"
 #include "util.h"
 
 //--------------------------------------------------------------------------
@@ -99,7 +99,11 @@ bool InitPyHiew()
     }
 
     // Check pyhiew folder
-    strncat(pyhiew_path, "\\" PYHIEW_PATH, sizeof(pyhiew_path));
+    strncat(
+        pyhiew_path, 
+        "\\" PYHIEW_PATH, 
+        sizeof(pyhiew_path) - strlen(pyhiew_path));
+
     if (!DirExists(pyhiew_path))
     {
         ErrBox("<%s> directory does not exist!", pyhiew_path);
@@ -510,7 +514,7 @@ static PyObject* py_HiewGate_Find(PyObject*, PyObject* args)
         flags,
         offset,
         (HEM_BYTE*)data,
-        data_len,
+        int(data_len),
         NULL);
     if (offset == HEM_OFFSET_NOT_FOUND)
         Py_RETURN_NONE;
@@ -663,7 +667,7 @@ static PyObject* py_HiewGate_FileWrite(PyObject*, PyObject* args)
         Py_RETURN_NONE;
 
     // Write
-    int rc = HiewGate_FileWrite(offset, bytes, (HEM_BYTE*)buf);
+    int rc = HiewGate_FileWrite(offset, HEM_UINT(bytes), (HEM_BYTE*)buf);
 
     return PyLong_FromLong(rc);
 }
@@ -732,7 +736,7 @@ static PyObject* py_HiewGate_GetStringDual(PyObject*, PyObject* args)
         title,
         (HEM_BYTE*)buf,
         max_input,
-        str_len,
+        int(str_len),
         &bOnHexLine);
 
     if (rc == HEM_INPUT_ESC)
@@ -1089,7 +1093,7 @@ static PyModuleDef pyhiew_module =
 {
     PyModuleDef_HEAD_INIT,
     PYHIEW_CMODNAME,
-    "Python bindings for hiew.ru",
+    "Python bindings for http://hiew.io",
     -1,
     pyhiew_methods
 };

@@ -29,7 +29,7 @@ bool GetModulePath(char* modname, char* path, size_t sz)
     if (hMod == NULL)
         return false;
 
-    GetModuleFileName(hMod, path, sz);
+    GetModuleFileName(hMod, path, DWORD(sz));
     char* p = strrchr(path, '\\');
     if (p == NULL)
         return false;

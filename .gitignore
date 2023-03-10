@@ -1,5 +1,5 @@
 __pycache__/
-build/
+build*/
 .vs/
 bin/pyhiew/doc
 src/Debug/

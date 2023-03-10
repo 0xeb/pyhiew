@@ -28,7 +28,7 @@ class PyScriptBrowser(Menu):
         self.files = []
         self.lastsel = 0
 
-        for fn in glob(hiew.PYHIEW_PATH + '\\*.py'):
+        for fn in glob(os.path.join(hiew.PYHIEW_PATH, '*.py')):
             # Strip path and extension
             short_fn = fn[L:-3]
             if short_fn[0] == '_' or short_fn in hiew.PYHIEW_EXCLUDED_SCRIPTS:
