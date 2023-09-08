@@ -45,7 +45,7 @@ def buf_to_c_array(buf):
             i += 1
     out = ''.join(out).rstrip()[:-1]
     return ('static unsigned char data[%d] = \n{\n\t%s\n};' %
-            (len(buf)-1, out))
+            (len(buf), out))
 
 # -----------------------------------------------------------------------
 def buf_to_python_string(buf):

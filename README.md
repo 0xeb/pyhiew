@@ -26,7 +26,7 @@ Documentation can be found in `pyhiew/doc/index.html`.
 
 pyhiew comes with a few built-in scripts in the [pyhiew](bin/pyhiew) folder.
 
-### System scripts:
+### System scripts
 
 * `init.py`: This is a special file that gets executed once when pyhiew initializes. One of its uses is to set the startup script.
 * `hiew.py`: The pyhiew python library. Please check the documents folder.
