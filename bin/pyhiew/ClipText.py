@@ -49,11 +49,7 @@ def buf_to_c_array(buf):
 
 # -----------------------------------------------------------------------
 def buf_to_python_string(buf):
-    out = []
-    for ch in buf:
-        out.append('\\%02x' % ch)
-    out = ''.join(out)
-    return ('"%s"' % out)
+    return ''.join(['\\x%02x' % ch for ch in buf])
 
 # -----------------------------------------------------------------------
 def buf_to_pascal_array(buf):
