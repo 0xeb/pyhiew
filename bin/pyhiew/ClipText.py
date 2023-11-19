@@ -6,7 +6,7 @@ Usage
 ========
 This script can copy data to various formats (source code representation, plain text)
 
-$ pip install pywin32
+$ pip install pyperclip
 
 Copy to:
 ----------
@@ -27,9 +27,9 @@ History
 import hiew
 
 try:
-    import win32clipboard
+    import pyperclip
 except:
-    hiew.Message("Error", "win32clipboard module not installed!")
+    hiew.Message("Error", "pyperclip module not installed!")
     raise
 
 # -----------------------------------------------------------------------
@@ -68,10 +68,10 @@ def buf_to_pascal_array(buf):
 
 # -----------------------------------------------------------------------
 def copy_text_to_clipboard(text):
-    win32clipboard.OpenClipboard()
-    win32clipboard.EmptyClipboard()
-    win32clipboard.SetClipboardText(text)
-    win32clipboard.CloseClipboard()
+    try:
+        pyperclip.copy(text)
+    except Exception as e:
+        return False
     return True
 
 # -----------------------------------------------------------------------
