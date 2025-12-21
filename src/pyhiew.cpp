@@ -262,11 +262,12 @@ static PyObject* py_HiewGate_GetData(PyObject*, PyObject* args)
         PyLong_FromLong(data.hemHandle),
         PyLong_FromLong(data.callId),
         PyUnicode_FromString((char*)data.filename),
-        PyLong_FromUnsignedLongLong(data.offsetCurrent),
+        PyLong_FromUnsignedLongLong(data.filelength),
         PyLong_FromUnsignedLongLong(data.offsetCurrent),
         PyLong_FromUnsignedLongLong(data.offsetMark1),
         PyLong_FromUnsignedLongLong(data.offsetMark2),
         PyLong_FromUnsignedLongLong(data.sizeMark),
+        PyUnicode_FromWideChar((wchar_t*)data.filenameW, -1),
         NULL);
 }
 
