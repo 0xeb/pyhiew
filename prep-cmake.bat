@@ -4,18 +4,9 @@
 
 setlocal
 
-if not exist build (
-    mkdir build
-    pushd build
-    cmake -A Win32 ..
-    popd
-)
+if not exist build cmake -A Win32 -B build
+if "%1"=="build" cmake --build build --config Release
 
-if "%1"=="build" (
-    pushd build
-    cmake --build . --config Release
-    popd
-)
 echo.
 echo All done!
 echo.
