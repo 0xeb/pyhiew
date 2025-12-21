@@ -42,7 +42,7 @@
 #define   PYHIEW_VAR_VERSION           "PYHIEW_VERSION" // pyhiew version
 #define   PYHIEW_VER_MAJOR             "0"
 #define   PYHIEW_VER_MINOR             "5"
-#define   PYHIEW_VER_BUILD             "0"
+#define   PYHIEW_VER_BUILD             "1"
 
 //--------------------------------------------------------------------------
 extern HEMINFO_TAG hem_pyhiew;
