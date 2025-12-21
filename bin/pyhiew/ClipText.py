@@ -1,127 +1,116 @@
 """
-Hiew script to copy data from hiew to text.
+ClipText - Copy selected bytes to clipboard in various formats.
 
+Usage:
+    Select bytes in Hiew, then run this script.
 
-Usage
-========
-This script can copy data to various formats (source code representation, plain text)
+Requires:
+    pip install pyperclip
 
-$ pip install pyperclip
+Formats:
+    - Plain text
+    - C array
+    - Pascal array
+    - Python string
 
-Copy to:
-----------
-- Plain text
-- C source
-- Pascal source
-
-
-TODO
-=====
-- Pasting from
-  - Plain text
-
-History
-=========
-- 1.0      - initial version
+(c) Elias Bachaalany
 """
+from __future__ import annotations
+
 import hiew
 
 try:
     import pyperclip
-except:
-    hiew.Message("Error", "pyperclip module not installed!")
+except ImportError:
+    hiew.Message("Error", "pyperclip module not installed! Run: pip install pyperclip")
     raise
 
-# -----------------------------------------------------------------------
-def buf_to_c_array(buf):
-    i = 1
-    out = []
-    for ch in buf:
-        out.append('0x%02x, ' % ch)
-        if i % CLIP_TEXT_ITEMS_PER_LINE == 0:
-            i = 1
-            out.append('\n\t')
-        else:
-            i += 1
-    out = ''.join(out).rstrip()[:-1]
-    return ('static unsigned char data[%d] = \n{\n\t%s\n};' %
-            (len(buf), out))
 
-# -----------------------------------------------------------------------
-def buf_to_python_string(buf):
-    return ''.join(['\\x%02x' % ch for ch in buf])
+# Configuration
+ITEMS_PER_LINE = 16
 
-# -----------------------------------------------------------------------
-def buf_to_pascal_array(buf):
-    i = 1
-    out = []
-    for ch in buf:
-        out.append('$%02x, ' % ch)
-        if i % CLIP_TEXT_ITEMS_PER_LINE == 0:
-            i = 1
-            out.append('\n\t')
-        else:
-            i += 1
-    out = ''.join(out).rstrip()[:-1]
-    return ('const data: array[0..%d] of Byte = \n(\n\t%s\n);' %
-            (len(buf)-1, out))
 
-# -----------------------------------------------------------------------
-def copy_text_to_clipboard(text):
+def buf_to_c_array(buf: bytes) -> str:
+    """Converts bytes to C array declaration."""
+    lines = []
+    for i, byte in enumerate(buf):
+        if i % ITEMS_PER_LINE == 0:
+            if i > 0:
+                lines.append('\n\t')
+        lines.append(f'0x{byte:02x}, ')
+
+    content = ''.join(lines).rstrip()[:-1]  # Remove trailing comma
+    return f'static unsigned char data[{len(buf)}] = \n{{\n\t{content}\n}};'
+
+
+def buf_to_pascal_array(buf: bytes) -> str:
+    """Converts bytes to Pascal array declaration."""
+    lines = []
+    for i, byte in enumerate(buf):
+        if i % ITEMS_PER_LINE == 0:
+            if i > 0:
+                lines.append('\n\t')
+        lines.append(f'${byte:02x}, ')
+
+    content = ''.join(lines).rstrip()[:-1]  # Remove trailing comma
+    return f'const data: array[0..{len(buf) - 1}] of Byte = \n(\n\t{content}\n);'
+
+
+def buf_to_python_string(buf: bytes) -> str:
+    """Converts bytes to Python hex string."""
+    return ''.join(f'\\x{byte:02x}' for byte in buf)
+
+
+def copy_to_clipboard(text: str) -> bool:
+    """Copies text to clipboard."""
     try:
         pyperclip.copy(text)
-    except Exception as e:
+        return True
+    except Exception:
         return False
-    return True
 
-# -----------------------------------------------------------------------
-def hiew_main():
 
-    try:
-        buf = hiew.Data.GetSelData()
-        if not buf:
-            hiew.Message("Error", "Nothing is selected!")
-            return
+def main() -> None:
+    """Main entry point."""
+    buf = hiew.Data.GetSelData()
+    if not buf:
+        hiew.Message("Error", "Nothing is selected!")
+        return
 
-        global CLIP_TEXT_CHOICE
-        m = hiew.Menu()
-        m.Create(
-            title = "Copy/Paste",
-            lines = ["Copy as plain text",    #0
-                     "Copy as C array",       #1
-                     "Copy as Pascal array",  #2
-                     "Copy as Python string", #3
-                     "Cancel"                 #4
-                     ],
-            width = 30)
+    menu = hiew.Menu()
+    menu.Create(
+        title="Copy to Clipboard",
+        lines=[
+            "Plain text",
+            "C array",
+            "Pascal array",
+            "Python string",
+            "Cancel"
+        ],
+        width=30
+    )
 
-        n, k = m.Show(CLIP_TEXT_CHOICE)
-        if n == 0:
-            if copy_text_to_clipboard(buf):
-                hiew.Message("Info", "Copied to clipboard as plain text!")
-        elif n == 1:
-            if copy_text_to_clipboard(buf_to_c_array(buf)):
-                hiew.Message("Info", "Copied to clipboard as C array!")
-        elif n == 2:
-            if copy_text_to_clipboard(buf_to_pascal_array(buf)):
-                hiew.Message("Info", "Copied to clipboard as pascal array!")
-        elif n == 3:
-            if copy_text_to_clipboard(buf_to_python_string(buf)):
-                hiew.Message("Info", "Copied to clipboard as Python string!")
-        elif n == 4:
-            pass
-        else:
-            return
-    except Exception as e:
-        hiew.MessageBox(str(e), 'Exception')
-    CLIP_TEXT_CHOICE = n
+    global _last_choice
+    n, _ = menu.Show(_last_choice)
 
-# -----------------------------------------------------------------------
-try:
-    CLIP_TEXT_CHOICE
-    CLIP_TEXT_ITEMS_PER_LINE
-except:
-    CLIP_TEXT_CHOICE = 0
-    CLIP_TEXT_ITEMS_PER_LINE = 16
+    if n == -1 or n == 4:  # ESC or Cancel
+        return
 
-hiew_main()
+    _last_choice = n
+
+    formats = [
+        ("plain text", lambda b: b.decode('latin-1', errors='replace')),
+        ("C array", buf_to_c_array),
+        ("Pascal array", buf_to_pascal_array),
+        ("Python string", buf_to_python_string),
+    ]
+
+    name, converter = formats[n]
+    if copy_to_clipboard(converter(buf)):
+        hiew.Message("Info", f"Copied to clipboard as {name}!")
+
+
+# Module state
+_last_choice = 0
+
+main()

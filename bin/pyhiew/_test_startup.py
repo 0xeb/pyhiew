@@ -1,11 +1,14 @@
+"""Test startup script for development."""
 import hiew
 
-def testMain():
-    global FIRST_RUN
-    try:
-        FIRST_RUN
-    except:
-        FIRST_RUN = 1
-        hiew.Message("Startup script", "First time executed!")
+_first_run = True
 
-    hiew.Message("Startup script", "Hello! I am invoked because of SetStartupScript()")
+
+def testMain() -> None:
+    global _first_run
+
+    if _first_run:
+        _first_run = False
+        hiew.Message("Startup", "First time executed!")
+
+    hiew.Message("Startup", "Hello from SetStartupScript()!")

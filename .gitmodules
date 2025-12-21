@@ -1,0 +1,3 @@
+[submodule "hiew-sdk-cpp"]
+	path = hiew-sdk-cpp
+	url = https://github.com/0xeb/hiew-sdk-cpp.git

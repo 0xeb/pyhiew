@@ -1,158 +1,131 @@
 """
-Strings.py - A hiew script to display strings in a file (c) Elias Bachaalany
+Strings - Display strings in a file using SysInternals strings.exe.
 
-This script uses "strings.exe" utility from SysInternals
+Requires strings.exe from SysInternals in PATH.
+https://docs.microsoft.com/en-us/sysinternals/downloads/strings
 """
-import hiew
+from __future__ import annotations
+
 import os
 
-# -----------------------------------------------------------------------
-class StringsScript(object):
-
-    @staticmethod
-    def get_strings_from_file(filename):
-        try:
-            f = os.popen(r'strings.exe -nobanner -o %s' % filename)
-            lines = f.readlines()
-            f.close()
-            data = []
-            for line in lines:
-                line = line.strip()
-                i = line.find(':')
-                data.append((int(line[:i]), line[i+1:]))
-
-            return data if len(data) else None
-        except:
-            return None
+import hiew
 
 
-    FileName = property(lambda self: hiew.Data.GetFileName())
-
+class StringsViewer:
+    """Displays and navigates strings found in the current file."""
 
     def __init__(self):
-        self.cache = None
+        self.cache: list[tuple[int, str]] | None = None
         self.menu = hiew.Menu()
-        self.last_filename = None
-        self.sel = None
-        self.last_text = None
+        self.last_filename: str | None = None
+        self.selection = 0
+        self.search_text: str | None = None
 
+    @property
+    def filename(self) -> str | None:
+        return hiew.Data.GetFileName()
 
-    def refresh(self):
-        """
-        Refreshes the string list
-        """
+    @staticmethod
+    def extract_strings(filename: str) -> list[tuple[int, str]] | None:
+        """Runs strings.exe and parses output."""
+        try:
+            with os.popen(f'strings.exe -nobanner -o "{filename}"') as f:
+                lines = f.readlines()
 
-        # Reset selection
-        self.sel = 0
+            result = []
+            for line in lines:
+                line = line.strip()
+                if ':' in line:
+                    offset_str, text = line.split(':', 1)
+                    result.append((int(offset_str), text))
 
-        # Get open filename
-        filename = self.FileName
+            return result if result else None
+        except Exception:
+            return None
 
-        # Extract strings
-        self.cache = self.get_strings_from_file(filename)
+    def refresh(self) -> bool:
+        """Refreshes the string list from the current file."""
+        self.selection = 0
+        self.cache = self.extract_strings(self.filename)
+
         if not self.cache:
+            self.menu.Create(
+                title="Strings",
+                lines=["No strings found", "Press F5 to refresh"],
+                width=70,
+                main_keys={5: "Reload"}
+            )
             return False
 
-        # No strings? Display an info line
-        main_keys = {5: "ReLoad"}
-        if not self.cache:
-            lines = ["No items",
-                    "-> press F5 to refresh"
-                    "-> press F7 to search",
-                    "-> press Shift-F7 to search next"]
-            alt_keys = shift_keys = {}
-        else:
-            lines = [x[:60] for _, x in self.cache]
-            main_keys[7] = "Find"
-            shift_keys = {7: "Next"}
+        # Truncate long strings for display
+        lines = [text[:60] for _, text in self.cache]
 
-        # Compile the menu
         self.menu.Create(
-            title = "Strings for %s" % os.path.basename(filename),
-            lines = lines,
-            width = 70,
-            main_keys = main_keys,
-            shift_keys = shift_keys)
-
+            title=f"Strings: {os.path.basename(self.filename)}",
+            lines=lines,
+            width=70,
+            main_keys={5: "Reload", 7: "Find"},
+            shift_keys={7: "Next"}
+        )
         return True
 
+    def search(self) -> int:
+        """Prompts for search text and finds first match."""
+        self.search_text = hiew.GetString("Search for:", 50)
+        return self.search_next(start_offset=0)
 
-    def search(self):
-        self.last_text = hiew.GetString("Enter search string", 50)
-        return self.search_next(0)
+    def search_next(self, start_offset: int = 1) -> int:
+        """Finds next match starting from current selection + offset."""
+        if not self.search_text or not self.cache:
+            return self.selection
 
+        for i in range(self.selection + start_offset, len(self.cache)):
+            if self.search_text.lower() in self.cache[i][1].lower():
+                return i
 
+        return self.selection  # No match found
 
-    def search_next(self, delta = 1):
-        txt = self.last_text
-        if txt:
-            c = len(self.cache)
-            i = self.sel + delta
-            while i < c:
-                if self.cache[i][1].find(txt) != -1:
-                    return i
-                i += 1
-
-        # Return same index on no match
-        return self.sel
-
-
-    def execute(self):
-        """
-        Executes the script
-        """
-
-        filename = self.FileName
-        if self.last_filename != filename:
+    def run(self) -> None:
+        """Main interaction loop."""
+        # Refresh if file changed
+        if self.last_filename != self.filename:
             if not self.refresh():
-                hiew.Window.FromString("Error", "Strings utility from SysInternals is not present")
-                return False
-
-            self.last_filename = filename
+                hiew.Message("Error", "strings.exe not found or no strings in file")
+                return
+            self.last_filename = self.filename
 
         while True:
-            n, k = self.menu.Show(self.sel)
-            # ESC?
-            if n == -1:
+            n, key = self.menu.Show(self.selection)
+
+            if n == -1:  # ESC
                 break
 
-            # Refresh?
-            if k == hiew.HEM_FNKEY_F5:
+            if key == hiew.HEM_FNKEY_F5:
                 self.refresh()
                 continue
 
-            # No data? Do nothing
             if not self.cache:
                 continue
 
-            # Search?
-            if k == hiew.HEM_FNKEY_F7:
-                self.sel = self.search()
-            # Search next?
-            elif k == hiew.HEM_FNKEY_SHIFTF7:
-                self.sel = self.search_next()
+            if key == hiew.HEM_FNKEY_F7:
+                self.selection = self.search()
+            elif key == hiew.HEM_FNKEY_SHIFTF7:
+                self.selection = self.search_next()
             else:
-                # Save last selection
-                self.sel = n
+                self.selection = n
+                hiew.ReturnOffset(self.cache[self.selection][0])
+                break
 
-            # Jump in file
-            hiew.ReturnOffset(self.cache[self.sel][0])
 
-            break
+# Module-level instance
+_viewer: StringsViewer | None = None
 
-        return True
 
-# -----------------------------------------------------------------------
-def StringsMain():
-    global STRINGS_SCRIPT
-    try:
-        # Instantiated?
-        STRINGS_SCRIPT
-    except:
-        # Init
-        STRINGS_SCRIPT = StringsScript()
+def StringsMain() -> None:
+    global _viewer
+    if _viewer is None:
+        _viewer = StringsViewer()
+    _viewer.run()
 
-    STRINGS_SCRIPT.execute()
 
-# -----------------------------------------------------------------------
 StringsMain()

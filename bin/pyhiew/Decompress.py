@@ -1,55 +1,47 @@
 """
-Hiew script to decompress streams
+Decompress - Decompress selected bytes using zlib.
 
-It currently supports gzip streams
-
-TODO
-=====
-- add menu and allow users to select decompression method
-- make automatic stream begin/end detection
+Select compressed data in Hiew, run this script, and save to a file.
 """
+from __future__ import annotations
 
 import zlib
+
 import hiew
 
-# -----------------------------------------------------------------------
-def hiew_main():
+# Remember last used filename
+_last_filename = ""
+
+
+def main() -> None:
+    global _last_filename
+
+    # Get selected data
     buf = hiew.Data.GetSelData()
     if not buf:
         hiew.Message("Error", "Nothing is selected!")
         return
 
-    # Decompress data
+    # Try to decompress
     try:
-        ubuf = zlib.decompress(buf)
-    except Exception as e:
-        hiew.Window.FromString("Failed to decompress buffer!", str(e))
+        decompressed = zlib.decompress(buf)
+    except zlib.error as e:
+        hiew.Window.FromString("Decompression Failed", str(e), width=60)
         return
 
-    # Get filename
-    global DECOMPRESS_FILENAME
-    fn = hiew.GetFilename("Enter file name:", DECOMPRESS_FILENAME)
-    if not fn:
+    # Get output filename
+    filename = hiew.GetFilename("Save decompressed data to:", _last_filename)
+    if not filename:
         return
 
-    # Write decompressed data
+    # Write to file
     try:
-        f = open(fn, 'wb')
-        f.write(ubuf)
-        f.close()
+        with open(filename, 'wb') as f:
+            f.write(decompressed)
+        _last_filename = filename
+        hiew.Message("Success", f"Wrote {len(decompressed)} bytes to file")
+    except IOError as e:
+        hiew.Message("Error", f"Failed to write: {e}")
 
-        # Remember decompressed file name
-        DECOMPRESS_FILENAME = fn
 
-        hiew.Message("Okay", "Decompressed successfully!")
-    except:
-        hiew.Message("Error", "Failed to write decompressed data!")
-        return
-
-# -----------------------------------------------------------------------
-try:
-    DECOMPRESS_FILENAME
-except:
-    DECOMPRESS_FILENAME = ""
-
-hiew_main()
+main()

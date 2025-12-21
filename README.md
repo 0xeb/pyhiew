@@ -1,59 +1,86 @@
-# Introduction
+# pyhiew
 
-![pyhiew](src/pyhiew.ico) _pyhiew_ is a Python wrapper for [Hiew](http://hiew.io). It allows you to write Python scripts to extend Hiew's functionality.
+Python scripting for [Hiew](http://hiew.io) hex editor/disassembler.
 
-# Installation
+Write Python scripts to automate tasks, add new features, and extend Hiew's functionality through the HEM (Hiew Extension Module) plugin interface.
 
-First, make sure you have [Python 3.x 32-bits](https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe) installed, then:
+## Features
 
-1. Copy `pyhiew.hem` to `%HIEW%` (or to `%HIEW%\hem`)
-2. Copy `pyhiew` folder to `%HIEW%\pyhiew`
+- Full access to Hiew's file reading/writing, navigation, and UI
+- Menu and window creation for interactive scripts
+- Symbol/name management for annotations
+- Search functionality with pattern matching
+- Block selection and manipulation
 
-If you have multiple versions of Python installed (especially 64-bits and 32-bits), you may need to adjust your PATH environment variable so the correct version of Python is used.
+## Requirements
 
-Perhaps use a modified copy of the [hiewrun.bat](bin/hiewrun.bat) batch file or permanently adjust the `PATH` environment variable:
+- Windows (Hiew is Windows-only)
+- Python 3.10+ 32-bit (Hiew is 32-bit)
+- Hiew 8.x or later
+
+## Installation
+
+1. Copy `pyhiew.hem` to your Hiew folder (or `hem` subfolder)
+2. Copy the `pyhiew` folder to your Hiew folder
+
+If you have multiple Python versions, use a launcher script:
 
 ```batch
 @echo off
-
-set path=C:\Python311-32;%path%
+set PATH=C:\Python312-32;%PATH%
 "%~dp0\hiew32.exe" %*
 ```
 
-Documentation can be found in `pyhiew/doc/index.html`.
-
-## Built-in scripts
-
-pyhiew comes with a few built-in scripts in the [pyhiew](bin/pyhiew) folder.
-
-### System scripts
-
-* `init.py`: This is a special file that gets executed once when pyhiew initializes. One of its uses is to set the startup script.
-* `hiew.py`: The pyhiew python library. Please check the documents folder.
-* `scriptbrowser.py`: The standard script browsers (set as startup script). It lets you select and run other Python scripts in the folder.
-
-### Sample scripts:
-
-* `ClipText.py`: Allows you to copy selected bytes from Hiew into the clipboard (as C/Python/Pascal source code). This requires the pywin32 package (`pip install pywin32`).
-* `IDA-Names-Server.py` and `3rdparty/IDA-Names-Client.py`: Client server plugins to transfer symbols from IDA to Hiew
-* `test_pyshell.py`: A Python shell with Hiew as the Python host.
-* `_test_startup.py`: A test startup script. Configure in `init.py`.
-* `Decompress.py`: Uses `zlib.decompress` to decompress the selected bytes.
-* All other scripts: various examples.
-
-# Building instructions
-
-This project requires Python 3 [(32-bits)](https://www.python.org/ftp/python/3.11.2/python-3.11.2.exe) development libraries and headers, CMake and Visual Studio compiler preferably.
+## Building
 
 ```bash
-git clone https://github.com/0xeb/pyhiew.git
+git clone --recursive https://github.com/0xeb/pyhiew.git
 cd pyhiew
-mkdir build
-cd build
+mkdir build && cd build
 cmake -A Win32 ..
 cmake --build . --config Release
 ```
 
-For testing, make a copy of your Hiew installation into the [bin](bin) folder. If you are using Visual Studio, you should be able to build and run without any additional steps.
+Output: `bin/pyhiew.hem`
 
-You may also use the `prep-cmake.bat` script to prepare the build environment. Run `prep-cmake.bat build` to directly build the project.
+**Note**: Uses [hiew-sdk-cpp](https://github.com/0xeb/hiew-sdk-cpp) as a submodule. The `--recursive` flag is required.
+
+## Included Scripts
+
+Located in `bin/pyhiew/`:
+
+| Script | Description |
+|--------|-------------|
+| `scriptbrowser.py` | Default startup - browse and run scripts |
+| `ClipText.py` | Copy bytes as C/Python/Pascal code (`pip install pyperclip`) |
+| `Decompress.py` | Decompress selected bytes with zlib |
+| `Strings.py` | Display strings using SysInternals strings.exe |
+| `PEiD.py` | PE file identification |
+| `example_*.py` | API usage examples |
+
+## Quick Start
+
+```python
+import hiew
+
+# Show a message
+hiew.Message("Hello", "Hello from PyHiew!")
+
+# Get file info
+data = hiew.GetData()
+print(f"File: {data.filename}, Size: {data.filelength}")
+
+# Read bytes
+rc, buf = hiew.FileRead(0, 16)
+
+# Create a menu
+menu = hiew.Menu()
+menu.Create("Options", ["Option 1", "Option 2"], width=30)
+selection, key = menu.Show()
+```
+
+See `bin/pyhiew/example_*.py` for more examples and `pyhiew/doc/` for API documentation.
+
+## License
+
+MIT

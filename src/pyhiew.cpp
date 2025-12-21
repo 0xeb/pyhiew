@@ -1,3 +1,5 @@
+// Python Stable ABI - must be defined BEFORE Python.h
+#define Py_LIMITED_API 0x030A0000
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <pycapsule.h>
@@ -7,7 +9,10 @@
 #include <conio.h>
 #include <Windows.h>
 #include <stdarg.h>
-#include "../hiewsdk/hem.h"
+
+// Hiew SDK from submodule
+#include <hem.h>
+
 #include "util.h"
 
 //--------------------------------------------------------------------------
@@ -20,7 +25,7 @@
 
 //--------------------------------------------------------------------------
 #define   HEM_PYHIEW_VERSION_MAJOR     0
-#define   HEM_PYHIEW_VERSION_MINOR     1
+#define   HEM_PYHIEW_VERSION_MINOR     5
 #define   HEM_PYHIEW_MODNAME           "pyhiew.hem"
 #define   HEM_PYHIEW_VERSION           "VERSION"
 
@@ -36,7 +41,7 @@
 #define   PYHIEW_VAR_PYHIEWPATH        "PYHIEW_PATH" // Hiew32\pyhiew path
 #define   PYHIEW_VAR_VERSION           "PYHIEW_VERSION" // pyhiew version
 #define   PYHIEW_VER_MAJOR             "0"
-#define   PYHIEW_VER_MINOR             "3"
+#define   PYHIEW_VER_MINOR             "5"
 #define   PYHIEW_VER_BUILD             "0"
 
 //--------------------------------------------------------------------------
@@ -320,7 +325,7 @@ struct py_hiewcontrol
 
             // 2. Allocate individual lines
             for (int i = 0; i < linescount; i++)
-                lines[i] = strdup(PyUnicode_AsUTF8(PyList_GetItem(pylines, i)));
+                lines[i] = strdup(PyUnicode_AsUTF8AndSize(PyList_GetItem(pylines, i), NULL));
 
             // Title
             title = strdup(_title);

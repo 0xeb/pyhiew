@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python 3.12 (32-bit)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x86'
+
+      - name: Configure CMake
+        run: cmake -B build -A Win32
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Create release package
+        run: |
+          mkdir release\pyhiew
+          copy bin\pyhiew.hem release\
+          copy bin\pyhiew\*.py release\pyhiew\
+          cd release
+          7z a -tzip ..\pyhiew-${{ github.ref_name }}.zip *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyhiew-${{ github.ref_name }}
+          path: pyhiew-${{ github.ref_name }}.zip
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pyhiew-${{ github.ref_name }}.zip
+          generate_release_notes: true

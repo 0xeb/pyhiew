@@ -1,1013 +1,923 @@
-# -----------------------------------------------------------------------
-# PyHiew - Python bindings for the Hiew SDK
-# (c) Elias Bachaalany
+"""
+PyHiew - Python bindings for the Hiew SDK
+(c) Elias Bachaalany
+"""
+from __future__ import annotations
+
 import _hiew
 import traceback
 import os
+from dataclasses import dataclass, field
 from glob import glob
+from typing import Any, Callable
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # From _hiew
-VERSION = _hiew.VERSION # Hiew and HEM version
-"""
-Version information stored in a dictionary with these keys:
-        major
-        minor
-        sdkmajor
-        sdkminor
-"""
-PYHIEW_PATH = _hiew.PYHIEW_PATH
+VERSION: dict = _hiew.VERSION
+"""Version info dict: major, minor, sdkmajor, sdkminor"""
+
+PYHIEW_PATH: str = _hiew.PYHIEW_PATH
 """Path to pyhiew's scripts"""
 
-PYHIEW_VERSION = _hiew.PYHIEW_VERSION
-"""
-pyhiew plugin version dictionary: major, minor, build
-"""
+PYHIEW_VERSION: dict = _hiew.PYHIEW_VERSION
+"""pyhiew plugin version: major, minor, build"""
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Testing switch: Turn on to have the startup script reload each time
 PYHIEW_RELOAD_STARTUP_SCRIPT = True
 PYHIEW_SHOW_EXEC_ERRORS = False
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # From hem_en.txt
-HEM_MAX_DUALSTR_LEN =  20
-HEM_MAX_FINDSTR_LEN =  20
+HEM_MAX_DUALSTR_LEN = 20
+HEM_MAX_FINDSTR_LEN = 20
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Startup scripts
-PYHIEW_STARTUP_SCRIPT = None
-PYHIEW_STARTUP_DICT = None
-PYHIEW_STARTUP_FUNCTION = None
+PYHIEW_STARTUP_SCRIPT: str | None = None
+PYHIEW_STARTUP_DICT: dict | None = None
+PYHIEW_STARTUP_FUNCTION: str | None = None
 PYHIEW_STARTUP_SCRIPT_EXECUTED = False
 
 # Script browser excluded scripts
-PYHIEW_EXCLUDED_SCRIPTS = set(['init', 'hiew', '_hiew'])
+PYHIEW_EXCLUDED_SCRIPTS: set[str] = {'init', 'hiew', '_hiew'}
 
-# -----------------------------------------------------------------------
-# Meta
-# -----
-# defines RE
-# /s: #define *([^ ]+) +([^ ]+)
-# /r: \1 \2
-# comment header
-# /s: ////////////////////////////////////////////////////////////
-# /r: # -----------------------------------------------------------------------
-
-# -----------------------------------------------------------------------
-#// HEM keys line
-#//  Active x12  | Caption 6x12
-__HIEW_KEY_LINES = "123456789ABC|F1____F2____F3____F4____F5____F6____F7____F8____F9____F10___F11___F12___"
-
-HIEW_KEY_LABEL_LEN   = 6
+# ---------------------------------------------------------------------------
+# HEM keys line
+# Active x12 | Caption 6x12
+HIEW_KEY_LABEL_LEN = 6
 HIEW_EMPTY_KEY_LABEL = ' ' * HIEW_KEY_LABEL_LEN
-HEM_FNKEY_DELIMITER  = '|'
+HEM_FNKEY_DELIMITER = '|'
 
-#<defines>
-HEM_FNKEY_F1                    = 0xFF3B
-HEM_FNKEY_F2                    = 0xFF3C
-HEM_FNKEY_F3                    = 0xFF3D
-HEM_FNKEY_F4                    = 0xFF3E
-HEM_FNKEY_F5                    = 0xFF3F
-HEM_FNKEY_F6                    = 0xFF40
-HEM_FNKEY_F7                    = 0xFF41
-HEM_FNKEY_F8                    = 0xFF42
-HEM_FNKEY_F9                    = 0xFF43
-HEM_FNKEY_F10                   = 0xFF44
-HEM_FNKEY_F11                   = 0xFF85
-HEM_FNKEY_F12                   = 0xFF86
+# Function keys
+HEM_FNKEY_F1 = 0xFF3B
+HEM_FNKEY_F2 = 0xFF3C
+HEM_FNKEY_F3 = 0xFF3D
+HEM_FNKEY_F4 = 0xFF3E
+HEM_FNKEY_F5 = 0xFF3F
+HEM_FNKEY_F6 = 0xFF40
+HEM_FNKEY_F7 = 0xFF41
+HEM_FNKEY_F8 = 0xFF42
+HEM_FNKEY_F9 = 0xFF43
+HEM_FNKEY_F10 = 0xFF44
+HEM_FNKEY_F11 = 0xFF85
+HEM_FNKEY_F12 = 0xFF86
 
-HEM_FNKEY_ALTF1                 = 0xFF68
-HEM_FNKEY_ALTF2                 = 0xFF69
-HEM_FNKEY_ALTF3                 = 0xFF6A
-HEM_FNKEY_ALTF4                 = 0xFF6B
-HEM_FNKEY_ALTF5                 = 0xFF6C
-HEM_FNKEY_ALTF6                 = 0xFF6D
-HEM_FNKEY_ALTF7                 = 0xFF6E
-HEM_FNKEY_ALTF8                 = 0xFF6F
-HEM_FNKEY_ALTF9                 = 0xFF70
-HEM_FNKEY_ALTF10                = 0xFF71
-HEM_FNKEY_ALTF11                = 0xFF8B
-HEM_FNKEY_ALTF12                = 0xFF8C
+HEM_FNKEY_ALTF1 = 0xFF68
+HEM_FNKEY_ALTF2 = 0xFF69
+HEM_FNKEY_ALTF3 = 0xFF6A
+HEM_FNKEY_ALTF4 = 0xFF6B
+HEM_FNKEY_ALTF5 = 0xFF6C
+HEM_FNKEY_ALTF6 = 0xFF6D
+HEM_FNKEY_ALTF7 = 0xFF6E
+HEM_FNKEY_ALTF8 = 0xFF6F
+HEM_FNKEY_ALTF9 = 0xFF70
+HEM_FNKEY_ALTF10 = 0xFF71
+HEM_FNKEY_ALTF11 = 0xFF8B
+HEM_FNKEY_ALTF12 = 0xFF8C
 
-HEM_FNKEY_CTRLF1                = 0xFF5E
-HEM_FNKEY_CTRLF2                = 0xFF5F
-HEM_FNKEY_CTRLF3                = 0xFF60
-HEM_FNKEY_CTRLF4                = 0xFF61
-HEM_FNKEY_CTRLF5                = 0xFF62
-HEM_FNKEY_CTRLF6                = 0xFF63
-HEM_FNKEY_CTRLF7                = 0xFF64
-HEM_FNKEY_CTRLF8                = 0xFF65
-HEM_FNKEY_CTRLF9                = 0xFF66
-HEM_FNKEY_CTRLF10               = 0xFF67
-HEM_FNKEY_CTRLF11               = 0xFF89
-HEM_FNKEY_CTRLF12               = 0xFF8A
+HEM_FNKEY_CTRLF1 = 0xFF5E
+HEM_FNKEY_CTRLF2 = 0xFF5F
+HEM_FNKEY_CTRLF3 = 0xFF60
+HEM_FNKEY_CTRLF4 = 0xFF61
+HEM_FNKEY_CTRLF5 = 0xFF62
+HEM_FNKEY_CTRLF6 = 0xFF63
+HEM_FNKEY_CTRLF7 = 0xFF64
+HEM_FNKEY_CTRLF8 = 0xFF65
+HEM_FNKEY_CTRLF9 = 0xFF66
+HEM_FNKEY_CTRLF10 = 0xFF67
+HEM_FNKEY_CTRLF11 = 0xFF89
+HEM_FNKEY_CTRLF12 = 0xFF8A
 
-HEM_FNKEY_SHIFTF1               = 0xFF54
-HEM_FNKEY_SHIFTF2               = 0xFF55
-HEM_FNKEY_SHIFTF3               = 0xFF56
-HEM_FNKEY_SHIFTF4               = 0xFF57
-HEM_FNKEY_SHIFTF5               = 0xFF58
-HEM_FNKEY_SHIFTF6               = 0xFF59
-HEM_FNKEY_SHIFTF7               = 0xFF5A
-HEM_FNKEY_SHIFTF8               = 0xFF5B
-HEM_FNKEY_SHIFTF9               = 0xFF5C
-HEM_FNKEY_SHIFTF10              = 0xFF5D
-HEM_FNKEY_SHIFTF11              = 0xFF87
-HEM_FNKEY_SHIFTF12              = 0xFF88
+HEM_FNKEY_SHIFTF1 = 0xFF54
+HEM_FNKEY_SHIFTF2 = 0xFF55
+HEM_FNKEY_SHIFTF3 = 0xFF56
+HEM_FNKEY_SHIFTF4 = 0xFF57
+HEM_FNKEY_SHIFTF5 = 0xFF58
+HEM_FNKEY_SHIFTF6 = 0xFF59
+HEM_FNKEY_SHIFTF7 = 0xFF5A
+HEM_FNKEY_SHIFTF8 = 0xFF5B
+HEM_FNKEY_SHIFTF9 = 0xFF5C
+HEM_FNKEY_SHIFTF10 = 0xFF5D
+HEM_FNKEY_SHIFTF11 = 0xFF87
+HEM_FNKEY_SHIFTF12 = 0xFF88
 
-# -----------------------------------------------------------------------
-# HEM SDK version, Major version will compatible!
-
+# ---------------------------------------------------------------------------
+# HEM SDK version
 HEM_SDK_VERSION_MAJOR = 0
-HEM_SDK_VERSION_MINOR = 53
+HEM_SDK_VERSION_MINOR = 54
 
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Length of strings
+HEM_FILENAME_MAXLEN = 260
+HEM_SHORTNAME_SIZE = 16
+HEM_NAME_SIZE = 60
+HEM_ABOUT_SIZE = 48
 
-HEM_FILENAME_MAXLEN  = 260
-HEM_SHORTNAME_SIZE   = 16
-HEM_NAME_SIZE        = 60
-HEM_ABOUT_SIZE       = 48
-
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Bits of the hemFlag
+HEM_FLAG_MARKEDBLOCK = 0x80000000
 
-HEM_FLAG_MARKEDBLOCK    = 0x80000000
+HEM_FLAG_FILEMASK = 0x00003FD8
+HEM_FLAG_ELF64 = 0x00002000
+HEM_FLAG_PE64 = 0x00001000
+HEM_FLAG_ELF = 0x00000800
+HEM_FLAG_NLM = 0x00000400
+HEM_FLAG_PE = 0x00000200
+HEM_FLAG_LX = 0x00000100
+HEM_FLAG_LE = 0x00000080
+HEM_FLAG_NE = 0x00000040
+HEM_FLAG_FILE = 0x00000010
+HEM_FLAG_DISK = 0x00000008
 
-HEM_FLAG_FILEMASK       = 0x00003FD8
-HEM_FLAG_ELF64          = 0x00002000
-HEM_FLAG_PE64           = 0x00001000
-HEM_FLAG_ELF            = 0x00000800
-HEM_FLAG_NLM            = 0x00000400
-HEM_FLAG_PE             = 0x00000200
-HEM_FLAG_LX             = 0x00000100
-HEM_FLAG_LE             = 0x00000080
-HEM_FLAG_NE             = 0x00000040
-HEM_FLAG_FILE           = 0x00000010
-HEM_FLAG_DISK           = 0x00000008
+HEM_FLAG_MODEMASK = 0x00000007
+HEM_FLAG_CODE = 0x00000004
+HEM_FLAG_HEX = 0x00000002
+HEM_FLAG_TEXT = 0x00000001
 
-HEM_FLAG_MODEMASK       = 0x00000007
-HEM_FLAG_CODE           = 0x00000004
-HEM_FLAG_HEX            = 0x00000002
-HEM_FLAG_TEXT           = 0x00000001
-
-# -----------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # Bits of the returnActionFlag
+HEM_RETURN_SETOFFSET = 0x00000001
+HEM_RETURN_FILERELOAD = 0x00000002
+HEM_RETURN_SETMODE = 0x00000004
 
-HEM_RETURN_SETOFFSET     = 0x00000001
-HEM_RETURN_FILERELOAD    = 0x00000002
-HEM_RETURN_SETMODE       = 0x00000004
+HEM_RETURN_MODE_TEXT = 1
+HEM_RETURN_MODE_HEX = 2
+HEM_RETURN_MODE_CODE = 3
 
-HEM_RETURN_MODE_TEXT     = 1
-HEM_RETURN_MODE_HEX      = 2
-HEM_RETURN_MODE_CODE     = 3
+# ---------------------------------------------------------------------------
+# Find flags
+HEM_FIND_NEXT = 0x00000001
+HEM_FIND_BACKWARD = 0x00000002
+HEM_FIND_CASESENSITIVE = 0x00000004
+HEM_FIND_INMARK = 0x00000008
+HEM_FIND_USEMASK = 0x00000010
 
-# -----------------------------------------------------------------------
-# Bits of the Find()
+# ---------------------------------------------------------------------------
+# Return codes
+HEM_ERR_INTERNAL = -21
+HEM_ERR_INVALID_ARGUMENT = -20
+HEM_ERR_HIEW_VERSION_INVALID = -19
+HEM_ERR_FNKEYS_INVALID = -18
+HEM_ERR_READONLYFILE = -17
+HEM_ERR_POINTER_IS_NULL = -16
+HEM_ERR_HIEWDATA_SIZE_MISMATCH = -15
+HEM_ERR_HEMINFO_SIZE_MISMATCH = -14
+HEM_ERR_HEMINFO_IS_NULL = -13
+HEM_ERR_HEM2HEMGATE_IS_NULL = -12
+HEM_ERR_HEM_NOTFOUND = -11
+HEM_ERR_HIEWGATE_PARM_INVALID = -10
+HEM_ERR_HIEWGATE_ID_INVALID = -9
+HEM_ERR_HANDLE_INVALID = -8
+HEM_ERR_NOADDRESS_HIEWGATE = -7
+HEM_ERR_NOENTRYPOINT = -6
+HEM_ERR_UNLOADED = -5
+HEM_ERR_SDKVER_INCOMPATIBLE = -4
+HEM_ERR_NOADDRESS_LOAD = -3
+HEM_ERR_LOADDLL = -2
+HEM_ERROR = -1
+HEM_OK = 0
 
-HEM_FIND_NEXT            = 0x00000001
-HEM_FIND_BACKWARD        = 0x00000002
-HEM_FIND_CASESENSITIVE   = 0x00000004
-HEM_FIND_INMARK          = 0x00000008
-HEM_FIND_USEMASK         = 0x00000010
-
-# -----------------------------------------------------------------------
-# Return code of the hem interface
-
-HEM_ERR_INTERNAL                            = (-21)
-HEM_ERR_INVALID_ARGUMENT                    = (-20)
-HEM_ERR_HIEW_VERSION_INVALID                = (-19)
-HEM_ERR_FNKEYS_INVALID                      = (-18)
-HEM_ERR_READONLYFILE                        = (-17)
-HEM_ERR_POINTER_IS_NULL                     = (-16)
-HEM_ERR_HIEWDATA_SIZE_MISMATCH              = (-15)
-HEM_ERR_HEMINFO_SIZE_MISMATCH               = (-14)
-HEM_ERR_HEMINFO_IS_NULL                     = (-13)
-HEM_ERR_HEM2HEMGATE_IS_NULL                 = (-12)
-HEM_ERR_HEM_NOTFOUND                        = (-11)
-HEM_ERR_HIEWGATE_PARM_INVALID               = (-10)
-HEM_ERR_HIEWGATE_ID_INVALID                 = (-9)
-HEM_ERR_HANDLE_INVALID                      = (-8)
-HEM_ERR_NOADDRESS_HIEWGATE                  = (-7)
-HEM_ERR_NOENTRYPOINT                        = (-6)
-HEM_ERR_UNLOADED                            = (-5)
-HEM_ERR_SDKVER_INCOMPATIBLE                 = (-4)
-HEM_ERR_NOADDRESS_LOAD                      = (-3)
-HEM_ERR_LOADDLL                             = (-2)
-HEM_ERROR                                   = (-1)
-HEM_OK                                      = 0
-
-HEM_INPUT_ESC                               = 0
-HEM_INPUT_CR                                = 1
-HEM_KEYBREAK                                = 2
-HEM_OFFSET_NOT_FOUND                        = -1
-
-#</defines>
-
-# -----------------------------------------------------------------------
-#int HiewGate_Menu(HEM_BYTE *title, HEM_BYTE **lines, int linesCount,
-#                  int width, int startItem, HEM_FNKEYS *fnKeys,
-#                  HEM_UINT *returnFnKey,
-#                  HEM_BYTE * (*CallbackLine)( int, void * ), void *pData );
-# Refer to the Menu wrapper class
+HEM_INPUT_ESC = 0
+HEM_INPUT_CR = 1
+HEM_KEYBREAK = 2
+HEM_OFFSET_NOT_FOUND = -1
 
 
-# -----------------------------------------------------------------------
-#int HiewGate_Window(HEM_BYTE *title, HEM_BYTE **lines, int linesCount,
-#                    int width, HEM_FNKEYS *fnKeys, HEM_UINT *returnFnKey );
-# Refer to the Window wrapper class
+# ---------------------------------------------------------------------------
+# API Functions
+# ---------------------------------------------------------------------------
 
-
-# -----------------------------------------------------------------------
-#int HiewGate_FileOpenForWrite(void);
-def FileOpenForWrite():
-    """Reopens file for writing"""
+def FileOpenForWrite() -> int:
+    """Reopens file for writing."""
     return _hiew.HiewGate_FileOpenForWrite()
 
-# -----------------------------------------------------------------------
-#int HiewGate_FileRead(HEM_QWORD offset, HEM_UINT bytes, HEM_BYTE *buffer);
-def FileRead(offset, bytes):
+
+def FileRead(offset: int, size: int) -> tuple[int, bytes | None]:
     """
-    Reads from the file
+    Reads from the file.
 
-    @param offset: file offset
-    @param bytes: amount of bytes to read
+    Args:
+        offset: File offset
+        size: Number of bytes to read
 
-    @return:
-        - (rc != HEM_OK, None)
-        - (rc == HEM_OK, buffer)
+    Returns:
+        Tuple of (return_code, buffer or None)
     """
-    return _hiew.HiewGate_FileRead(offset, bytes)
+    return _hiew.HiewGate_FileRead(offset, size)
 
-# -----------------------------------------------------------------------
-#int HiewGate_FileWrite(HEM_QWORD offset, HEM_UINT bytes, HEM_BYTE *buffer);
-def FileWrite(offset, buf):
+
+def FileWrite(offset: int, buf: bytes) -> int:
     """
-    Writes buffer to file
+    Writes buffer to file.
 
-    @param offset: file offset
-    @param buf: buffer to write
-    @return: HEM_ERR_xxx
+    Args:
+        offset: File offset
+        buf: Buffer to write
+
+    Returns:
+        HEM_ERR_xxx code
     """
     return _hiew.HiewGate_FileWrite(offset, buf)
 
-# -----------------------------------------------------------------------
-#int HiewGate_GetData(HIEWGATE_GETDATA *hiewData);
-def GetData():
-    """
-    Returns a Data class instance
-    see HIEWGATE_GETDATA structure
-    """
+
+def GetData() -> 'Data':
+    """Returns a Data instance with current file info."""
     return _hiew.HiewGate_GetData()
 
-# -----------------------------------------------------------------------
-#int HiewGate_GetLastResult(void);
-def GetLastResult():
+
+def GetLastResult() -> int:
+    """Returns the last HiewGate result code."""
     return _hiew.HiewGate_GetLastResult()
 
-# -----------------------------------------------------------------------
-#int HiewGate_Message(HEM_BYTE *title, HEM_BYTE *msg);
-def Message(title, msg):
-    """Displays single-line message to user"""
+
+def Message(title: str, msg: str) -> int:
+    """Displays a single-line message to user."""
     return _hiew.HiewGate_Message(title, msg)
 
-# -----------------------------------------------------------------------
-#int HiewGate_MarkBlock(HEM_QWORD offset1, HEM_QWORD offset2);
-def MarkBlock(offset1, offset2):
+
+def MarkBlock(offset1: int, offset2: int) -> int:
     """
-    Marks a block
-    @param offset1: start pos
-    @param offset2: end pos
-    @return: HEM_ERR_xxx
+    Marks a block.
+
+    Args:
+        offset1: Start position
+        offset2: End position
+
+    Returns:
+        HEM_ERR_xxx code
     """
     return _hiew.HiewGate_MarkBlock(offset1, offset2)
 
-# -----------------------------------------------------------------------
-#int HiewGate_UnmarkBlock(void);
-def UnmarkBlock():
-    """
-    Unmarks selection
-    @return: HEM_ERR_xxx
-    """
+
+def UnmarkBlock() -> int:
+    """Unmarks the current selection."""
     return _hiew.HiewGate_UnmarkBlock()
 
-# -----------------------------------------------------------------------
-#HEM_QWORD HiewGate_Find(int flags, HEM_QWORD offset, HEM_BYTE *pData, int dataLength /* <= 20 */, HEM_BYTE *pMask);
-def Find(flags, offset, data, mask = None):
-    """
-    @param flags: one of HEM_FIND_XXXX flags
-    @param offset: starting offset
-    @param data: data buffer to find ; len is max HEM_MAX_FINDSTR_LEN
-    @param mask: currently unused
 
-    @return:
-        None - not found
-        Offset - offset of the match
+def Find(flags: int, offset: int, data: bytes, mask: bytes | None = None) -> int | None:
+    """
+    Finds data in file.
+
+    Args:
+        flags: HEM_FIND_xxx flags
+        offset: Starting offset
+        data: Data to find (max HEM_MAX_FINDSTR_LEN bytes)
+        mask: Currently unused
+
+    Returns:
+        Offset of match, or None if not found
     """
     return _hiew.HiewGate_Find(flags, offset, data)
 
-# -----------------------------------------------------------------------
-#HEM_QWORD HiewGate_FindNext(void);
-def FindNext():
-    """Returns the find next offset or None"""
+
+def FindNext() -> int | None:
+    """Returns the next find offset, or None if not found."""
     return _hiew.HiewGate_FindNext()
 
-# -----------------------------------------------------------------------
-#int HiewGate_GetString(HEM_BYTE *title, HEM_BYTE *string, int stringLen);
-def GetString(title, max_input, init_val = ""):
+
+def GetString(title: str, max_input: int, init_val: str = "") -> str | None:
     """
-    Gets one line of user input
-    @param title: prompt title
-    @param max_input: max input
-    @param init_val: initial input value
-    @return: string or None (if user pressed ESC)
+    Gets one line of user input.
+
+    Args:
+        title: Prompt title
+        max_input: Maximum input length
+        init_val: Initial input value
+
+    Returns:
+        User input string, or None if ESC pressed
     """
     return _hiew.HiewGate_GetString(title, max_input, init_val)
 
-# -----------------------------------------------------------------------
-#int HiewGate_GetStringDual( HEM_BYTE *title, HEM_BYTE *string, int stringLenMax /* <= 20 */, int stringLen, int *bOnHexLine );
-def GetStringDual(title, max_input, init_val = "", on_hex_line = False):
-    """
-    Gets ascii/hex line from user
 
-    @param title: prompt title
-    @param max_input: max input; HEM_MAX_DUALSTR_LEN
-    @param init_val: initial input value (contains binary data)
-    @param on_hex_line: focus on hex line
-    @return:
-        None (if user pressed ESC)
-        tuple(1, string) if user pressed enter on the hex line
-        tuple(0, string) if user pressed enter on the string line
+def GetStringDual(
+    title: str,
+    max_input: int,
+    init_val: bytes = b"",
+    on_hex_line: bool = False
+) -> tuple[int, bytes] | None:
+    """
+    Gets ascii/hex dual-line input from user.
+
+    Args:
+        title: Prompt title
+        max_input: Max input (up to HEM_MAX_DUALSTR_LEN)
+        init_val: Initial binary value
+        on_hex_line: Focus on hex line initially
+
+    Returns:
+        Tuple of (on_hex_line, data) or None if ESC pressed
     """
     return _hiew.HiewGate_GetStringDual(title, max_input, init_val, on_hex_line)
 
-# -----------------------------------------------------------------------
-#int HiewGate_GetFilename(HEM_BYTE *title, HEM_BYTE *filename);
-def GetFilename(title, filename = ""):
+
+def GetFilename(title: str, filename: str = "") -> bytes | None:
     """
-    Gets line with filename. Hiew offers the F9 key to browse for a filename
-    @param title: prompt title
-    @param filename: initial filename value
-    @return: string or None
+    Gets filename with F9 browser support.
+
+    Args:
+        title: Prompt title
+        filename: Initial filename
+
+    Returns:
+        Selected filename, or None if ESC pressed
     """
     return _hiew.HiewGate_GetFilename(title, filename)
 
-# -----------------------------------------------------------------------
-#int HiewGate_IsKeyBreak(void);
-def IsKeyBreak():
-    """
-    Checks if the wait dialog is cancelled
-    @return: Boolean
-    """
+
+def IsKeyBreak() -> bool:
+    """Returns True if user pressed ESC during wait dialog."""
     return _hiew.HiewGate_IsKeyBreak()
 
-# -----------------------------------------------------------------------
-#int HiewGate_MessageWaitOpen(HEM_BYTE *msg);
-def MessageWaitOpen(msg = ""):
+
+def MessageWaitOpen(msg: str = "") -> int:
     """
-    Open single-line message to user.
-    @param msg: the wait message. If empty then message will "Processing..."
+    Opens a wait message dialog.
+
+    Args:
+        msg: Message to display (default: "Processing...")
     """
     return _hiew.HiewGate_MessageWaitOpen(msg)
 
-# -----------------------------------------------------------------------
-#int HiewGate_MessageWaitClose(void);
-def MessageWaitClose():
+
+def MessageWaitClose() -> None:
+    """Closes the wait message dialog."""
     return _hiew.HiewGate_MessageWaitClose()
 
-# -----------------------------------------------------------------------
-#int HiewGate_SetErrorMsg(HEM_BYTE *errorMsg);
-def SetErrorMsg(error_msg):
+
+def SetErrorMsg(error_msg: str) -> int:
+    """Sets an error message visible in F6 info."""
     return _hiew.HiewGate_SetErrorMsg(error_msg)
 
-# -----------------------------------------------------------------------
-#int        HiewGate_Names_DelName( HEM_BYTE *name );
-#HEM_BYTE  *HiewGate_Names_GetLocal( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength );
-#HEM_BYTE  *HiewGate_Names_GetGlobal( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength );
-#HEM_BYTE  *HiewGate_Names_GetLocalComment( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength );
-#HEM_BYTE  *HiewGate_Names_GetGlobalComment( HEM_QWORD offset, HEM_BYTE *retname, int retnameBufferLength );
 
-#HEM_QWORD  HiewGate_Global2Local( HEM_QWORD offsetGlobal );
-#HEM_QWORD  HiewGate_Local2Global( HEM_QWORD offsetLocal );
-
-# -----------------------------------------------------------------------
-#int        HiewGate_GetHem2HemGate( HIEWGATE_GETHEM2HEMGATE *tag, HEM_BYTE *shortName );
+def MessageBox(message: str, title: str = 'Info') -> None:
+    """Shows a Windows message box."""
+    return _hiew.MessageBox(title, message)
 
 
-# -----------------------------------------------------------------------
-def _make_keys(key_def):
+def dbg(msg: str) -> None:
+    """Outputs a debug string (OutputDebugString)."""
+    _hiew.od(msg)
+
+
+def ReturnOffset(offset: int) -> None:
+    """Sets the cursor offset on script exit."""
+    return _hiew.ReturnOffset(offset)
+
+
+def ReturnMode(mode: int) -> None:
     """
-    Constructs a hiew keys line string
+    Sets the view mode on script exit.
 
-    @param key_def: A dictionary where:
-                    - key: function_key_number
-                    - value: key_label -> active key
-                    - value: -key_label -> inactive key
-
-    @return: hiew keys line
+    Args:
+        mode: HEM_RETURN_MODE_xxx constant
     """
+    return _hiew.ReturnMode(mode)
+
+
+def ReturnReload() -> None:
+    """Reloads the file on script exit."""
+    return _hiew.ReturnReload()
+
+
+def ResetReturnAction() -> None:
+    """Clears all ReturnXxx() settings."""
+    return _hiew.ResetReturnAction()
+
+
+def ReturnCode(rc: int) -> None:
+    """
+    Sets the return code on script exit.
+
+    Args:
+        rc: HEM_ERR_xxx code
+    """
+    return _hiew.ReturnCode(rc)
+
+
+# ---------------------------------------------------------------------------
+# Helper Functions
+# ---------------------------------------------------------------------------
+
+def _make_keys(key_def: dict[int, str]) -> str:
+    """
+    Constructs a Hiew keys line string.
+
+    Args:
+        key_def: Dict mapping key number (1-12) to label.
+                 Prefix label with '-' for inactive key.
+
+    Returns:
+        Hiew keys line string
+    """
+    if not key_def:
+        return ""
+
     keys = []
     labels = []
 
-    # no keys? return an empty string
-    if len(key_def) == 0:
-        return ""
-
-    for i in range(1, 12 + 1):
-        try:
-            key, label = i, key_def[i]
-            if label.startswith('-'):
-                key = '0'
-                label = label[1:]
-            else:
-                key = '1'
-        except KeyError:
+    for i in range(1, 13):
+        label = key_def.get(i, '')
+        if label.startswith('-'):
+            key = '0'
+            label = label[1:]
+        elif label:
+            key = '1'
+        else:
             key = '0'
             label = HIEW_EMPTY_KEY_LABEL
 
-        t = len(label)
-        if t > HIEW_KEY_LABEL_LEN:
-            label = label[0:HIEW_KEY_LABEL_LEN]
-        else:
-            label += ' ' * (HIEW_KEY_LABEL_LEN - t)
-
+        # Pad or truncate to HIEW_KEY_LABEL_LEN
+        label = label[:HIEW_KEY_LABEL_LEN].ljust(HIEW_KEY_LABEL_LEN)
         keys.append(key)
         labels.append(label)
 
     return ''.join(keys) + HEM_FNKEY_DELIMITER + ''.join(labels)
 
-# -----------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Control Classes
+# ---------------------------------------------------------------------------
+
 class Control:
-    """
-    Hiew control class
-    """
+    """Base class for Hiew UI controls (Menu/Window)."""
+
     def __init__(self):
-        self.__control = None
+        self._control = None
+        self._is_window = False
 
-
-    def _clear_control(self):
-        """Clears an already setup control"""
-        if self.__control:
-            _hiew.ControlClear(self.__control)
-            self.__control = None
-
+    def _clear_control(self) -> None:
+        """Clears an already setup control."""
+        if self._control:
+            _hiew.ControlClear(self._control)
+            self._control = None
 
     def __del__(self):
         self._clear_control()
 
-
-    def Create(self,
-             title,
-             lines,
-             width,
-             is_window,
-             main_keys = "",
-             alt_keys = "",
-             ctrl_keys = "",
-             shift_keys = ""):
+    def Create(
+        self,
+        title: str,
+        lines: list[str],
+        width: int,
+        is_window: bool,
+        main_keys: dict[int, str] | str = "",
+        alt_keys: dict[int, str] | str = "",
+        ctrl_keys: dict[int, str] | str = "",
+        shift_keys: dict[int, str] | str = ""
+    ) -> bool:
         """
-        Creates a control but does not show it.
+        Creates a control (does not show it).
 
-        @param title: control title
-        @param lines: a list of lines
-        @param width: control width
-        @param is_window: control type
-        @param main_keys: main key lines (optional)
-        @param alt_keys: main key lines (optional)
-        @param ctrl_keys: ctrl key lines (optional)
-        @param shift_keys: shift key lines (optional)
+        Args:
+            title: Control title
+            lines: List of lines
+            width: Control width
+            is_window: True for window, False for menu
+            main_keys: Main function keys
+            alt_keys: Alt function keys
+            ctrl_keys: Ctrl function keys
+            shift_keys: Shift function keys
 
-        @return: Boolean == control was compiled successfully
+        Returns:
+            True if created successfully
         """
-
-        # Clear previous control
         self._clear_control()
 
-        # Convert key dictionary to Hiew key lines string
-        if main_keys:
+        # Convert key dicts to strings
+        if isinstance(main_keys, dict):
             main_keys = _make_keys(main_keys)
-        if alt_keys:
+        if isinstance(alt_keys, dict):
             alt_keys = _make_keys(alt_keys)
-        if ctrl_keys:
+        if isinstance(ctrl_keys, dict):
             ctrl_keys = _make_keys(ctrl_keys)
-        if shift_keys:
+        if isinstance(shift_keys, dict):
             shift_keys = _make_keys(shift_keys)
 
-        # Call the wrapper
-        r = _hiew.ControlCreate(self, title, lines, width, is_window, main_keys, alt_keys, ctrl_keys, shift_keys)
-        if not r:
+        result = _hiew.ControlCreate(
+            self, title, lines, width, is_window,
+            main_keys, alt_keys, ctrl_keys, shift_keys
+        )
+        if not result:
             return False
 
-        # Bind
-        self.__control = r
-        self.__is_window = is_window
-
+        self._control = result
+        self._is_window = is_window
         return True
 
-
-    def Show(self, sel_line = 0):
+    def Show(self, sel_line: int = 0) -> tuple[int, int]:
         """
-        Shows an already setup control. If no control is setup HEM_ERR_INVALID_ARGUMENT will be returned
-        @param sel_line: The initial line (0 based)
+        Shows the control.
 
-        @return: tuple(-1|lineno, 0|HEM_FNKEY_xxx)
+        Args:
+            sel_line: Initial selected line (0-based, for menus)
+
+        Returns:
+            Tuple of (selected_line or -1, fnkey or 0)
         """
-        if not self.__control:
-            return HEM_ERR_INVALID_ARGUMENT
+        if not self._control:
+            return (HEM_ERR_INVALID_ARGUMENT, 0)
 
-        r, fnkey = _hiew.ControlShow(self.__control, sel_line)
-        if self.__is_window:
+        r, fnkey = _hiew.ControlShow(self._control, sel_line)
+
+        if self._is_window:
             return (r, fnkey)
         else:
-            if r <= 0:
-                return (-1, 0)
-            else:
-                return (r-1, fnkey)
+            return (r - 1, fnkey) if r > 0 else (-1, 0)
 
-# -----------------------------------------------------------------------
+
 class Menu(Control):
-    """Menu control"""
+    """Menu control."""
+
     def __init__(self):
-        Control.__init__(self)
+        super().__init__()
 
+    def Create(
+        self,
+        title: str,
+        lines: list[str],
+        width: int,
+        main_keys: dict[int, str] | str = "",
+        alt_keys: dict[int, str] | str = "",
+        ctrl_keys: dict[int, str] | str = "",
+        shift_keys: dict[int, str] | str = ""
+    ) -> bool:
+        """Creates a menu. See Control.Create()."""
+        return super().Create(
+            title, lines, width, False,
+            main_keys, alt_keys, ctrl_keys, shift_keys
+        )
 
-    def Show(self, sel_line = 0):
-        return Control.Show(sel_line)
-
-
-    def Create(self,
-             title,
-             lines,
-             width,
-             main_keys = "",
-             alt_keys = "",
-             ctrl_keys = "",
-             shift_keys = ""):
-        #
-        return Control.Create(self, title, lines,
-                       width, False, main_keys,
-                       alt_keys, ctrl_keys, shift_keys)
-
-
-    def Show(self, sel_line = 0):
+    def Show(self, sel_line: int = 0) -> tuple[int, int]:
         """
-        Shows the main menu. Refer to Control.Show()
-        @param sel_line: Initial selected line
+        Shows the menu.
+
+        Args:
+            sel_line: Initial selected line (0-based)
+
+        Returns:
+            Tuple of (selected_line or -1, fnkey or 0)
         """
-        return Control.Show(self, sel_line)
+        return super().Show(sel_line)
 
 
-# -----------------------------------------------------------------------
 class Window(Control):
-    """Window control"""
+    """Window control."""
+
     def __init__(self):
-        Control.__init__(self)
+        super().__init__()
 
+    def Create(
+        self,
+        title: str,
+        lines: list[str],
+        width: int,
+        main_keys: dict[int, str] | str = "",
+        alt_keys: dict[int, str] | str = "",
+        ctrl_keys: dict[int, str] | str = "",
+        shift_keys: dict[int, str] | str = ""
+    ) -> bool:
+        """Creates a window. See Control.Create()."""
+        return super().Create(
+            title, lines, width, True,
+            main_keys, alt_keys, ctrl_keys, shift_keys
+        )
 
-    def Show(self):
+    def Show(self) -> tuple[int, int]:
         """
-        Shows the main window.
+        Shows the window.
 
-        Refer to Control.Show()
-
-        @return: (n=0, fnkey)
+        Returns:
+            Tuple of (0, fnkey)
         """
-        return Control.Show(self)
-
+        return super().Show()
 
     @staticmethod
     def FromString(
-        title,
-        msg,
-        width = 70,
-        main_keys = "",
-        alt_keys = "",
-        ctrl_keys = "",
-        shift_keys = ""):
+        title: str,
+        msg: str | list[str],
+        width: int = 70,
+        main_keys: dict[int, str] | str = "",
+        alt_keys: dict[int, str] | str = "",
+        ctrl_keys: dict[int, str] | str = "",
+        shift_keys: dict[int, str] | str = ""
+    ) -> tuple[int, int]:
         """
-        Static method to quickly construct a window from a string with
-        embedded new lines
-        @param title: The window title
-        @param msg: The message (containing embedded new lines) or an array of lines
+        Quick way to show a window from a string.
 
-        @return: (n=0, fnkey)
+        Args:
+            title: Window title
+            msg: Message string (with newlines) or list of lines
+            width: Window width
+
+        Returns:
+            Tuple of (0, fnkey)
         """
         w = Window()
-        r = w.Create(
-            title = title,
-            lines = (msg.split('\n') if isinstance(msg, str) else msg),
-            width = width,
-            main_keys = main_keys,
-            alt_keys = alt_keys,
-            ctrl_keys = ctrl_keys,
-            shift_keys = shift_keys)
-
+        lines = msg.split('\n') if isinstance(msg, str) else msg
+        w.Create(
+            title=title,
+            lines=lines,
+            width=width,
+            main_keys=main_keys,
+            alt_keys=alt_keys,
+            ctrl_keys=ctrl_keys,
+            shift_keys=shift_keys
+        )
         return w.Show()
 
 
-    def Create(self,
-             title,
-             lines,
-             width,
-             main_keys = "",
-             alt_keys = "",
-             ctrl_keys = "",
-             shift_keys = ""):
-        """
-        Creates a window. Refer to Control() class
-        """
-        return Control.Create(self, title, lines,
-                       width, True, main_keys,
-                       alt_keys, ctrl_keys, shift_keys)
+# ---------------------------------------------------------------------------
+# Data Class
+# ---------------------------------------------------------------------------
 
-
-# -----------------------------------------------------------------------
-class Data(object):
-    """Class representing HIEWGATE_GETDATA"""
-    def __init__(self,
-            hemHandle = 0,
-            callId = 0,
-            filename = None,
-            filelength = 0,
-            offsetCurrent = 0,
-            offsetMark1 = 0,
-            offsetMark2 = 0,
-            sizeMark = 0):
-
-        self.hemHandle      = hemHandle
-        self.callId         = callId
-        self.filename       = filename
-        self.filelength     = filelength
-        self.offsetCurrent  = offsetCurrent
-        self.offsetMark1    = offsetMark1
-        self.offsetMark2    = offsetMark2
-        self.sizeMark       = sizeMark
+@dataclass
+class Data:
+    """File information from Hiew (HIEWGATE_GETDATA)."""
+    hemHandle: int = 0
+    callId: int = 0
+    filename: str | None = None
+    filelength: int = 0
+    offsetCurrent: int = 0
+    offsetMark1: int = 0
+    offsetMark2: int = 0
+    sizeMark: int = 0
+    filenameW: str | None = None  # Unicode filename (SDK 0.54+)
 
     @staticmethod
-    def GetCurrentOffset():
-        """Returns the current file offset"""
+    def GetCurrentOffset() -> int:
+        """Returns the current file offset."""
         return GetData().offsetCurrent
 
     @staticmethod
-    def GetFileName():
-        """
-        Returns the opened file name
-        """
+    def GetFileName() -> str | None:
+        """Returns the opened filename."""
         return GetData().filename
 
     @staticmethod
-    def GetSel():
+    def GetSel() -> tuple[int, int, int]:
         """
-        Returns selection information
-        @return: (start, end, size)
+        Returns selection information.
+
+        Returns:
+            Tuple of (start, end, size)
         """
         d = GetData()
         return (d.offsetMark1, d.offsetMark2, d.sizeMark)
 
     @staticmethod
-    def GetSelData():
-        """
-        Returns the selected buffer or None
-        """
+    def GetSelData() -> bytes | None:
+        """Returns the selected bytes, or None if nothing selected."""
         mark1, mark2, mark_sz = Data.GetSel()
         if mark_sz == 0:
             return None
 
-        r, s = FileRead(mark1, mark_sz)
-        return None if not r else s
+        rc, data = FileRead(mark1, mark_sz)
+        return data if rc > 0 else None
 
 
-# -----------------------------------------------------------------------
-class Names(object):
-    """Name management class"""
+# ---------------------------------------------------------------------------
+# Names Class
+# ---------------------------------------------------------------------------
+
+class Names:
+    """Name/symbol management."""
+
     @staticmethod
-    def Clear():
-        """Clear all names"""
+    def Clear() -> int:
+        """Clears all names."""
         return _hiew.HiewGate_Names_Clear()
 
-
     @staticmethod
-    def AddLocal(offset, name):
-        """
-        Adds a local name
-
-        @param offset: the offset to add the name at
-        @param name: local name
-        """
+    def AddLocal(offset: int, name: str) -> int:
+        """Adds a local name at offset."""
         return _hiew.HiewGate_Names_AddLocal(offset, name)
 
-
     @staticmethod
-    def AddGlobal(offset, name):
-        """
-        Adds a global name
-
-        @param offset: the offset to add the name at
-        @param name: global name
-        """
+    def AddGlobal(offset: int, name: str) -> int:
+        """Adds a global name at offset."""
         return _hiew.HiewGate_Names_AddGlobal(offset, name)
 
-
     @staticmethod
-    def AddLocalComment(offset, comment):
-        """
-        Adds a local comment
-
-        @param offset: the offset
-        @param comment: comment
-        """
+    def AddLocalComment(offset: int, comment: str) -> int:
+        """Adds a local comment at offset."""
         return _hiew.HiewGate_Names_AddLocalComment(offset, comment)
 
-
     @staticmethod
-    def AddGlobalComment(offset, comment):
-        """
-        Adds a global comment
-
-        @param offset: the offset
-        @param comment: comment
-        """
+    def AddGlobalComment(offset: int, comment: str) -> int:
+        """Adds a global comment at offset."""
         return _hiew.HiewGate_Names_AddGlobalComment(offset, comment)
 
-
     @staticmethod
-    def DelGlobalComment(offset):
-        """
-        Deletes a global comment
-
-        @param offset: the offset
-        """
+    def DelGlobalComment(offset: int) -> int:
+        """Deletes a global comment at offset."""
         return _hiew.HiewGate_Names_DelGlobalComment(offset)
 
-
     @staticmethod
-    def DelLocalComment(offset):
-        """
-        Deletes a local comment
-
-        @param offset: the offset
-        """
+    def DelLocalComment(offset: int) -> int:
+        """Deletes a local comment at offset."""
         return _hiew.HiewGate_Names_DelLocalComment(offset)
 
-
     @staticmethod
-    def DelLocal(offset):
-        """
-        Deletes a local name
-
-        @param offset: the offset
-        """
+    def DelLocal(offset: int) -> int:
+        """Deletes a local name at offset."""
         return _hiew.HiewGate_Names_DelLocal(offset)
 
-
     @staticmethod
-    def DelGlobal(offset):
-        """
-        Deletes a global name
-
-        @param offset: the offset
-        """
+    def DelGlobal(offset: int) -> int:
+        """Deletes a global name at offset."""
         return _hiew.HiewGate_Names_DelGlobal(offset)
 
-
     @staticmethod
-    def CountLocal():
-        """
-        Returns the local names count
-        """
+    def CountLocal() -> int:
+        """Returns the count of local names."""
         return _hiew.HiewGate_Names_CountLocal()
 
-
     @staticmethod
-    def CountGlobal():
-        """
-        Returns the global names count
-        """
+    def CountGlobal() -> int:
+        """Returns the count of global names."""
         return _hiew.HiewGate_Names_CountGlobal()
 
-
     @staticmethod
-    def CountNames():
-        """
-        Returns all the name count
-        """
+    def CountNames() -> int:
+        """Returns the total name count."""
         return _hiew.HiewGate_Names_CountName()
 
+    @staticmethod
+    def FindName(name: str) -> tuple[int, bool] | None:
+        """
+        Finds a name.
+
+        Returns:
+            Tuple of (offset, is_local) or None if not found
+        """
+        result = _hiew.HiewGate_Names_FindName(name)
+        if result is None:
+            return None
+        return (result[0], bool(result[1]))
 
     @staticmethod
-    def FindName(name):
-        """
-        Finds any name
-
-        @return: tuple(name offset, local ? 1 : 0) or None
-        """
-        return _hiew.HiewGate_Names_FindName(name)
-
-
-    @staticmethod
-    def FindLocalName(name):
-        """
-        Finds a local name
-        """
+    def FindLocalName(name: str) -> int | None:
+        """Finds a local name, returns offset or None."""
         r = Names.FindName(name)
-        return None if r is None or r[1] == 0 else r[0]
-
+        return r[0] if r and r[1] else None
 
     @staticmethod
-    def FindGlobalName(name):
-        """
-        Finds a global name
-
-        @return: Global name offset
-        """
+    def FindGlobalName(name: str) -> int | None:
+        """Finds a global name, returns offset or None."""
         r = Names.FindName(name)
-        return None if r is None or r[1] != 0 else r[0]
+        return r[0] if r and not r[1] else None
 
 
-# -----------------------------------------------------------------------
-def MessageBox(message, title = 'Info'):
-    return _hiew.MessageBox(title, message)
+# ---------------------------------------------------------------------------
+# Dialog Helpers
+# ---------------------------------------------------------------------------
 
+def AskYesNo(
+    msg: str,
+    title: str = 'Please confirm',
+    width: int = 70,
+    yesno_keys: dict[int, str] | None = None
+) -> bool:
+    """
+    Shows a Yes/No confirmation dialog.
 
-# -----------------------------------------------------------------------
-dbg = lambda msg: _hiew.od(msg)
-"""Output debug string"""
+    Returns:
+        True for Yes, False for No/ESC
+    """
+    if yesno_keys is None:
+        yesno_keys = {1: "Yes", 2: "No"}
 
-# -----------------------------------------------------------------------
-def ReturnOffset(offset):
-    """
-    Changes the offset upon the script termination
-    @param offset: new offset
-    """
-    return _hiew.ReturnOffset(offset)
-
-# -----------------------------------------------------------------------
-def ReturnMode(mode):
-    """
-    Changes the view mode upon script termination
-    @param mode: one of HEM_RETURN_MODE_XXXX
-    """
-    return _hiew.ReturnMode(mode)
-
-# -----------------------------------------------------------------------
-def ReturnReload():
-    """
-    Reloads the file upon script termination
-    """
-    return _hiew.ReturnReload()
-
-# -----------------------------------------------------------------------
-def ResetReturnAction():
-    """
-    Clears the returnActionFlag value.
-    This will clear all the ReturnXXX() arguments that were set.
-    """
-    return _hiew.ResetReturnAction()
-
-# -----------------------------------------------------------------------
-def ReturnCode(rc):
-    """
-    Changes the return code upon script termination
-    (set the return value of Hem_EntryPoint())
-    @param rc: one of HEM_ERR_XXX
-    """
-    return _hiew.ReturnCode(rc)
-
-
-# -----------------------------------------------------------------------
-def AskYesNo(msg,
-            title='Please confirm',
-            width=70,
-            yesno_keys={1: "Yes", 2: "No"}):
-    """
-    Creates a window and prompts the user to answer Yes or No
-
-    @return: Boolean. False = No, True = Yes
-    """
     w = Window()
-    k = w.Create(title,
-             msg.split('\n'),
-             width=width,
-             main_keys=yesno_keys)
-    if not k:
+    if not w.Create(title, msg.split('\n'), width=width, main_keys=yesno_keys):
         return False
 
     while True:
-        ln, k = w.Show()
+        _, k = w.Show()
         if k == HEM_FNKEY_F1:
             return True
         elif k == HEM_FNKEY_F2:
             return False
+        elif k == 0:  # ESC
+            return False
 
-# -----------------------------------------------------------------------
-def PyHiew_ExecuteScript(script, g, strip_path = False):
+
+# ---------------------------------------------------------------------------
+# Script Execution
+# ---------------------------------------------------------------------------
+
+def PyHiew_ExecuteScript(
+    script: str,
+    g: dict,
+    strip_path: bool = False
+) -> str | None:
     """
-    Executes a script file and captures the error
+    Executes a script file.
 
-    @param script: script file name
-    @param g: the global scope
+    Args:
+        script: Script filename
+        g: Global scope dict
 
-    @return:
-        - None: execute successful
-        - String: the exception and traceback
+    Returns:
+        None on success, error string on failure
     """
-    PY_COMPILE_ERR = None
     try:
-        exec(compile(open(script, "rb").read(), script, 'exec'), g)
+        with open(script, "rb") as f:
+            code = compile(f.read(), script, 'exec')
+        exec(code, g)
+        return None
     except Exception as e:
-        PY_COMPILE_ERR = str(e) + "\n" + traceback.format_exc()
-        PY_COMPILE_ERR = PY_COMPILE_ERR.replace(
-            script[:-len(os.path.basename(script))],
-            '')
+        err = f"{e}\n{traceback.format_exc()}"
+        if strip_path:
+            base_path = script[:-len(os.path.basename(script))]
+            err = err.replace(base_path, '')
         if PYHIEW_SHOW_EXEC_ERRORS:
-            MessageBox(PY_COMPILE_ERR)
+            MessageBox(err)
+        return err
 
-    return PY_COMPILE_ERR
 
-# -----------------------------------------------------------------------
-def PyHiew_ExecuteCallable(func_name, g, *args, **kwargs):
+def PyHiew_ExecuteCallable(
+    func_name: str,
+    g: dict,
+    *args,
+    **kwargs
+) -> str | None:
     """
-    Executes a callable and captures the error
+    Executes a callable from the given scope.
 
-    @param func_name: script file name
-    @param g: the global scope
+    Args:
+        func_name: Function name
+        g: Global scope dict
 
-    @return:
-        - None: execute successful
-        - String: the exception and traceback
+    Returns:
+        None on success, error string on failure
     """
-    PY_COMPILE_ERR = None
     try:
         g[func_name](*args, **kwargs)
+        return None
     except Exception as e:
-        PY_COMPILE_ERR = str(e) + "\n" + traceback.format_exc()
-    return PY_COMPILE_ERR
+        return f"{e}\n{traceback.format_exc()}"
 
 
-# -----------------------------------------------------------------------
-def PyHiew_GetScriptFileName(script):
+def PyHiew_GetScriptFileName(script: str) -> str:
+    """Returns full path for a script name."""
+    return os.path.join(PYHIEW_PATH, f"{script}.py")
+
+
+def SetStartupScript(
+    st_script: str,
+    st_dict: dict,
+    st_func: str
+) -> None:
     """
-    Given a script name it returns its full path relative to PYHIEW_PATH
+    Sets the startup script.
+
+    Args:
+        st_script: Script name (with or without .py)
+        st_dict: Global scope for the script
+        st_func: Entry function name
     """
-    return '%s\\%s.py' % (PYHIEW_PATH, script)
-
-
-# -----------------------------------------------------------------------
-def SetStartupScript(st_script, st_dict, st_func):
-    global PYHIEW_EXCLUDED_SCRIPTS, PYHIEW_STARTUP_DICT, PYHIEW_STARTUP_FUNCTION, PYHIEW_STARTUP_SCRIPT
+    global PYHIEW_EXCLUDED_SCRIPTS, PYHIEW_STARTUP_DICT
+    global PYHIEW_STARTUP_FUNCTION, PYHIEW_STARTUP_SCRIPT
+    global PYHIEW_STARTUP_SCRIPT_EXECUTED
 
     # Strip extension
     if st_script.endswith('.py'):
         st_script = st_script[:-3]
 
-    # Remove previous script from exclusion list
+    # Remove previous from exclusion
     if PYHIEW_STARTUP_SCRIPT:
-        PYHIEW_EXCLUDED_SCRIPTS.remove(PYHIEW_STARTUP_SCRIPT)
+        PYHIEW_EXCLUDED_SCRIPTS.discard(PYHIEW_STARTUP_SCRIPT)
 
     PYHIEW_STARTUP_SCRIPT_EXECUTED = False
-
-    # Assign dictionary
     PYHIEW_STARTUP_DICT = st_dict
-
-    # Assign function
     PYHIEW_STARTUP_FUNCTION = st_func
-
-    # Assign startup script
     PYHIEW_STARTUP_SCRIPT = st_script
-
-    # Add startup script to the exclusion list
     PYHIEW_EXCLUDED_SCRIPTS.add(st_script)
 
 
-# -----------------------------------------------------------------------
-def PyHiew_Main():
-    """
-    Main entry point of PyHiew
-    """
+def PyHiew_Main() -> int:
+    """Main entry point for PyHiew."""
     global PYHIEW_STARTUP_SCRIPT_EXECUTED
 
-    # Startup script not set?
     if not PYHIEW_STARTUP_SCRIPT:
         Message("Error!", "No startup script specified!")
         return HEM_ERR_NOENTRYPOINT
 
-    # Execute startup script once
     if not PYHIEW_STARTUP_SCRIPT_EXECUTED:
-        # Execute it in the requested scope
-        err = PyHiew_ExecuteScript(PyHiew_GetScriptFileName(PYHIEW_STARTUP_SCRIPT), PYHIEW_STARTUP_DICT, True)
+        script_path = PyHiew_GetScriptFileName(PYHIEW_STARTUP_SCRIPT)
+        err = PyHiew_ExecuteScript(script_path, PYHIEW_STARTUP_DICT, True)
 
-        # Success? Remember and do not run the script again
         if err is None:
             PYHIEW_STARTUP_SCRIPT_EXECUTED = not PYHIEW_RELOAD_STARTUP_SCRIPT
         else:
             Window.FromString("Startup script file execution error", err)
             return HEM_ERR_INTERNAL
 
-    # Run main function of the startup script
     err = PyHiew_ExecuteCallable(PYHIEW_STARTUP_FUNCTION, PYHIEW_STARTUP_DICT)
     if err is not None:
-        err = err.replace(PYHIEW_PATH+'\\', '')
+        err = err.replace(PYHIEW_PATH + '\\', '')
         Window.FromString("Startup script function execution error", err)
 
     return HEM_OK
